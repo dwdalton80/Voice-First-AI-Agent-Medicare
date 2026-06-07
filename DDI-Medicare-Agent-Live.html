@@ -1,0 +1,2329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>D&D Ins Group AI Agent — Sarah</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@200;300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+:root {
+  /* D&D Insurance Group — Exact Brand Colors */
+  --brand-blue: #1a2475;
+  --brand-red: #e8182a;
+  --brand-purple: #7b1fa2;
+  --brand-navy: #0d1454;
+
+  /* Dark UI built on deep navy */
+  --bg: #05080f;
+  --bg2: #090e1c;
+  --bg3: #0e1530;
+  --panel: rgba(9,14,28,0.92);
+  --panel2: rgba(13,20,40,0.8);
+
+  /* Blue as primary accent */
+  --accent: #4a6cf7;
+  --accent2: #6b8fff;
+  --accent3: rgba(74,108,247,0.08);
+
+  /* Red as secondary / alert */
+  --brand-red-dim: rgba(232,24,42,0.12);
+
+  /* Borders use blue */
+  --border: rgba(74,108,247,0.14);
+  --border2: rgba(74,108,247,0.32);
+  --border3: rgba(74,108,247,0.58);
+
+  /* Semantic colors */
+  --gold: #e8bf4a;
+  --gold-dim: rgba(232,191,74,0.12);
+  --danger: #e8182a;
+  --danger-dim: rgba(232,24,42,0.12);
+  --success: #22c993;
+  --success-dim: rgba(34,201,147,0.12);
+  --warn: #f59e0b;
+  --warn-dim: rgba(245,158,11,0.12);
+
+  /* Text on dark navy */
+  --text: #f0f4ff;
+  --text2: #b8cce8;
+  --text3: #6a85b0;
+
+  --font: 'Exo 2', sans-serif;
+  --font-hud: 'Rajdhani', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+  --scan-line: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(26,36,117,0.06) 2px, rgba(26,36,117,0.06) 4px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;background-image:var(--scan-line);}
+body::after{content:'';position:fixed;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0.92) 0%,rgba(220,228,255,0.6) 8%,rgba(140,165,240,0.25) 18%,rgba(40,60,160,0.08) 30%,transparent 45%);pointer-events:none;z-index:0;}
+
+/* Grid background */
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(26,36,117,0.12) 1px,transparent 1px),linear-gradient(90deg,rgba(26,36,117,0.12) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+
+/* Corner decorations */
+.corner-tl,.corner-tr,.corner-bl,.corner-br{position:fixed;width:60px;height:60px;pointer-events:none;z-index:1000;}
+.corner-tl{top:8px;left:8px;border-top:2px solid rgba(26,36,117,0.7);border-left:2px solid rgba(26,36,117,0.7);}
+.corner-tr{top:8px;right:8px;border-top:2px solid rgba(232,24,42,0.7);border-right:2px solid rgba(232,24,42,0.7);}
+.corner-bl{bottom:8px;left:8px;border-bottom:2px solid rgba(123,31,162,0.6);border-left:2px solid rgba(26,36,117,0.7);}
+.corner-br{bottom:8px;right:8px;border-bottom:2px solid rgba(232,24,42,0.7);border-right:2px solid rgba(123,31,162,0.6);}
+
+/* ── SETUP SCREEN ── */
+#setup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:24px;gap:20px;position:relative;z-index:10;background:linear-gradient(180deg,#ffffff 0%,#e8eeff 20%,#c0d0ff 40%,#7090e0 60%,#2540a0 80%,#0a1640 100%);}
+.setup-card{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--border2);border-radius:4px;padding:32px;display:flex;flex-direction:column;gap:20px;position:relative;backdrop-filter:blur(20px);}
+.setup-card::before{content:'';position:absolute;top:-1px;left:0;right:0;height:2px;border-radius:4px 4px 0 0;background:linear-gradient(90deg,#1a2475,#7b1fa2,#e8182a);}
+.setup-card::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,#e8182a,#7b1fa2,#1a2475);}
+.setup-logo{display:flex;align-items:center;gap:14px;}
+.setup-logo-icon{width:44px;height:44px;border:1px solid var(--border3);display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
+.setup-logo-icon::before,.setup-logo-icon::after{content:'';position:absolute;width:6px;height:6px;border:1px solid var(--accent);}
+.setup-logo-icon::before{top:-1px;left:-1px;border-right:none;border-bottom:none;}
+.setup-logo-icon::after{bottom:-1px;right:-1px;border-left:none;border-top:none;}
+.setup-logo-icon svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.5;}
+.setup-title{font-family:var(--font-hud);font-size:22px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#1a2475;}
+.setup-subtitle{font-size:14px;color:#6a7fa8;font-family:var(--font-mono);letter-spacing:1px;}
+.setup-sub{font-size:12px;color:#4a5a80;line-height:1.7;border-left:2px solid rgba(26,36,117,0.3);padding-left:12px;}
+.setup-field{display:flex;flex-direction:column;gap:6px;}
+.setup-label{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:#1a2475;font-family:var(--font-mono);}
+.setup-input{background:#f4f6ff;border:1px solid rgba(26,36,117,0.2);padding:12px 14px;color:#1a2475;font-family:var(--font-mono);font-size:16px;outline:none;width:100%;transition:border-color 0.2s;border-radius:4px;}
+.setup-input:focus{border-color:#1a2475;}
+.setup-input::placeholder{color:#8a9ab8;}
+.setup-btn{padding:13px;background:linear-gradient(135deg,rgba(26,36,117,0.3),rgba(232,24,42,0.15));color:#fff;border:1px solid rgba(74,108,247,0.5);font-family:var(--font-hud);font-size:14px;font-weight:600;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;}
+.setup-btn::before{content:'';position:absolute;inset:0;background:var(--accent3);transform:scaleX(0);transform-origin:left;transition:transform 0.3s;}
+.setup-btn:hover::before{transform:scaleX(1);}
+.setup-btn:hover{border-color:var(--accent2);}
+.setup-hint{font-size:14px;color:#6a7fa8;text-align:center;line-height:1.7;font-family:var(--font-mono);}
+.setup-hint a{color:#1a2475;text-decoration:none;}
+
+/* ── MAIN APP ── */
+#app{display:none;flex-direction:column;min-height:100dvh;position:relative;z-index:10;}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:50px;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px);border-bottom:1px solid rgba(26,36,117,0.15);position:sticky;top:0;z-index:100;}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,rgba(26,36,117,0.8),rgba(74,108,247,1),rgba(123,31,162,0.9),rgba(232,24,42,1),rgba(232,24,42,0.8));}
+.header-left{display:flex;align-items:center;gap:12px;}
+.h-logo{font-family:var(--font-hud);font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#1a2475;}
+.h-logo span{color:#e8182a;}
+.h-logo em{color:#8a9ab8;font-style:normal;font-size:12px;letter-spacing:2px;}
+.mode-pill{font-size:12px;font-weight:700;padding:3px 10px;letter-spacing:2px;text-transform:uppercase;font-family:var(--font-mono);border:1px solid;transition:all 0.3s;}
+.mode-solo{background:rgba(26,36,117,0.08);color:#1a2475;border-color:rgba(26,36,117,0.3);}
+.mode-meeting{background:rgba(232,24,42,0.1);color:var(--danger);border-color:rgba(232,24,42,0.45);animation:pulse-danger 2s infinite;}
+.mode-review{background:rgba(245,158,11,0.1);color:#b07a00;border-color:rgba(245,158,11,0.4);}
+.header-center{flex:1;display:flex;justify-content:center;}
+.meeting-client-hud{font-family:var(--font-hud);font-size:15px;font-weight:700;color:#ff6b7a;display:flex;align-items:center;gap:8px;letter-spacing:0.5px;}
+.hud-dot{width:6px;height:6px;background:var(--danger);border-radius:50%;animation:blink 1s infinite;}
+.header-right{display:flex;align-items:center;gap:6px;}
+.h-btn{background:transparent;border:1px solid rgba(26,36,117,0.3);color:#1a2475;cursor:pointer;padding:7px 14px;font-size:13px;font-family:var(--font-hud);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px;transition:all 0.2s;min-height:36px;}
+.h-btn:hover{border-color:rgba(232,24,42,0.5);color:#e8182a;}
+.h-btn svg{width:12px;height:12px;}
+.h-icon-btn{background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;width:30px;height:30px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.h-icon-btn:hover{border-color:var(--border3);color:var(--accent);}
+.h-icon-btn svg{width:14px;height:14px;}
+
+/* Notif bar */
+#notif-bar{padding:5px 16px;background:rgba(255,255,255,0.95);border-bottom:1px solid rgba(26,36,117,0.12);display:flex;gap:8px;flex-wrap:wrap;backdrop-filter:blur(10px);}
+.notif-chip{display:flex;align-items:center;gap:6px;font-size:13px;padding:6px 12px;font-family:var(--font-hud);font-weight:600;border:1px solid;animation:slide-in 0.3s ease;}
+.notif-chip svg{width:10px;height:10px;}
+.notif-success{background:var(--success-dim);color:var(--success);border-color:rgba(0,229,176,0.25);}
+.notif-warn{background:var(--warn-dim);color:var(--warn);border-color:rgba(255,176,32,0.25);}
+.notif-error{background:var(--danger-dim);color:var(--danger);border-color:rgba(255,56,96,0.25);}
+
+/* Tabs */
+.tabs{display:flex;background:rgba(245,247,255,0.98);border-bottom:1px solid rgba(26,36,117,0.12);overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;padding:13px 18px;font-size:13px;font-weight:600;font-family:var(--font-hud);letter-spacing:0.5px;text-transform:uppercase;color:#6a7fa8;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;white-space:nowrap;min-height:46px;display:flex;align-items:center;}
+.tab.active{color:#1a2475;border-bottom-color:#e8182a;background:rgba(26,36,117,0.04);}
+.tab:hover:not(.active){color:#1a2475;}
+
+/* Content */
+.content{flex:1;overflow-y:auto;}
+.tab-panel{display:none;padding:20px;}
+.tab-panel.active{display:block;}
+
+/* ── HUD PANEL STYLE ── */
+.hud-panel{background:var(--panel);border:1px solid var(--border);position:relative;padding:16px;margin-bottom:10px;backdrop-filter:blur(10px);}
+.hud-panel::before{content:attr(data-label);position:absolute;top:-8px;left:12px;background:var(--bg);padding:0 8px;font-size:11px;font-family:var(--font-mono);color:var(--accent2);letter-spacing:2px;text-transform:uppercase;}
+.hud-panel-corner{position:absolute;width:8px;height:8px;}
+.hud-panel-corner.tl{top:-1px;left:-1px;border-top:1px solid var(--border3);border-left:1px solid var(--border3);}
+.hud-panel-corner.tr{top:-1px;right:-1px;border-top:1px solid var(--border3);border-right:1px solid var(--border3);}
+.hud-panel-corner.bl{bottom:-1px;left:-1px;border-bottom:1px solid var(--border3);border-left:1px solid var(--border3);}
+.hud-panel-corner.br{bottom:-1px;right:-1px;border-bottom:1px solid var(--border3);border-right:1px solid var(--border3);}
+
+/* ── VOICE PANEL ── */
+.voice-panel{display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:8px;}
+
+/* Arc reactor orb */
+.orb-wrap{position:relative;display:flex;align-items:center;justify-content:center;width:240px;height:240px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;}
+.orb-canvas{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;}
+.orb-center{position:absolute;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 40% 35%,rgba(26,36,117,0.4),rgba(74,108,247,0.08));border:1px solid rgba(74,108,247,0.4);display:flex;align-items:center;justify-content:center;z-index:3;transition:all 0.3s;pointer-events:none;}
+.orb-center.listening{background:radial-gradient(circle at 40% 35%,rgba(232,24,42,0.35),rgba(200,20,36,0.08));border-color:rgba(232,24,42,0.6);box-shadow:0 0 20px rgba(232,24,42,0.3);}
+.orb-center.processing{background:radial-gradient(circle at 40% 35%,rgba(74,108,247,0.4),rgba(26,36,117,0.15));border-color:rgba(74,108,247,0.7);box-shadow:0 0 24px rgba(74,108,247,0.3);}
+.orb-center svg{width:22px;height:22px;transition:all 0.3s;}
+.orb-hint{font-size:14px;color:var(--text2);font-family:var(--font-hud);letter-spacing:1px;text-transform:uppercase;text-align:center;font-weight:500;}
+
+/* Status bar under orb */
+/* orb status handled by canvas */
+
+/* Transcript */
+.transcript-box{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--border);padding:12px 14px;display:flex;flex-direction:column;gap:4px;position:relative;animation:slide-up 0.2s ease;}
+.transcript-box::before{content:'REC';position:absolute;top:-8px;left:12px;background:var(--bg);padding:0 6px;font-size:11px;font-family:var(--font-mono);color:var(--danger);letter-spacing:2px;}
+.transcript-label{font-size:12px;color:var(--text3);font-family:var(--font-mono);letter-spacing:1px;text-transform:uppercase;}
+.transcript-text{font-size:16px;color:#f0f4ff;font-family:var(--font-mono);line-height:1.6;}
+
+/* Response */
+.response-box{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--border2);padding:18px 20px;font-size:17px;line-height:1.85;color:#f0f4ff;position:relative;animation:slide-up 0.2s ease;}
+.response-box::before{content:'SARAH';position:absolute;top:-8px;left:12px;background:var(--bg);padding:0 6px;font-size:11px;font-family:var(--font-mono);color:var(--accent);letter-spacing:2px;}
+
+/* Pending */
+.pending-box{width:100%;max-width:400px;background:var(--panel);border:1px solid rgba(255,176,32,0.35);padding:14px 16px;display:flex;flex-direction:column;gap:10px;position:relative;animation:slide-up 0.2s ease;}
+.pending-box::before{content:'AWAITING CONFIRMATION';position:absolute;top:-8px;left:12px;background:var(--bg);padding:0 6px;font-size:11px;font-family:var(--font-mono);color:var(--warn);letter-spacing:2px;}
+.pending-text{font-size:16px;color:#f0f4ff;line-height:1.8;font-family:var(--font);}
+.pending-btns{display:flex;gap:8px;}
+.btn-confirm{flex:1;padding:14px;background:linear-gradient(135deg,rgba(26,36,117,0.35),rgba(74,108,247,0.2));color:#ffffff;border:1px solid rgba(74,108,247,0.5);font-family:var(--font-hud);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;min-height:48px;}
+.btn-confirm:hover{background:linear-gradient(135deg,rgba(26,36,117,0.5),rgba(74,108,247,0.35));border-color:rgba(74,108,247,0.8);}
+.btn-cancel{flex:0 0 auto;padding:14px 20px;background:transparent;color:var(--text2);border:1px solid var(--border2);font-family:var(--font-hud);font-size:15px;letter-spacing:0.5px;cursor:pointer;transition:all 0.2s;min-height:48px;}
+.btn-cancel:hover{border-color:var(--danger);color:var(--danger);}
+
+/* Notes */
+.notes-box{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--border);position:relative;}
+.notes-box::before{content:'MEETING LOG';position:absolute;top:-8px;left:12px;background:var(--bg);padding:0 6px;font-size:11px;font-family:var(--font-mono);color:var(--accent);letter-spacing:2px;}
+.notes-header{padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.notes-title-text{font-size:13px;font-family:var(--font-hud);font-weight:600;color:var(--text2);letter-spacing:0.5px;text-transform:uppercase;}
+.notes-count{font-size:13px;color:var(--accent2);font-family:var(--font-hud);font-weight:600;}
+.notes-list{padding:10px 14px;max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;}
+.note-item{font-size:15px;color:#f0f4ff;line-height:1.7;display:flex;gap:10px;font-family:var(--font);}
+.note-prefix{color:var(--accent);flex-shrink:0;}
+.notes-empty{font-size:14px;color:var(--text3);text-align:center;padding:16px 0;font-family:var(--font);}
+.end-meeting-btn{width:100%;padding:16px;background:transparent;color:#ff6b7a;border:none;border-top:1px solid rgba(232,24,42,0.25);font-family:var(--font-hud);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;min-height:50px;}
+.end-meeting-btn:hover{background:rgba(232,24,42,0.1);}
+
+/* Summary */
+.summary-box{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--border);padding:14px 16px;display:flex;flex-direction:column;gap:10px;position:relative;animation:slide-up 0.2s ease;}
+.summary-box::before{content:'DEBRIEF';position:absolute;top:-8px;left:12px;background:var(--bg);padding:0 6px;font-size:11px;font-family:var(--font-mono);color:var(--success);letter-spacing:2px;}
+.summary-title{font-size:13px;font-family:var(--font-hud);font-weight:700;color:var(--success);letter-spacing:1px;text-transform:uppercase;}
+.summary-text{font-size:16px;color:#f0f4ff;line-height:1.85;}
+.summary-section{font-size:12px;font-family:var(--font-mono);color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;}
+.action-item{display:flex;align-items:flex-start;gap:10px;font-size:15px;color:#d4e4ff;margin-bottom:8px;line-height:1.7;font-family:var(--font);}
+.ai-chevron{color:var(--accent);flex-shrink:0;}
+.due-tag{font-size:13px;color:var(--text2);font-family:var(--font-hud);margin-left:auto;flex-shrink:0;}
+.disposition-row{font-size:14px;color:var(--text2);font-family:var(--font-hud);font-weight:500;}
+
+/* Quick commands */
+.quick-cmds{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px;}
+.quick-cmd{padding:10px 16px;background:var(--panel);border:1px solid var(--border2);color:var(--text2);font-size:14px;font-family:var(--font-hud);font-weight:500;cursor:pointer;transition:all 0.15s;border-radius:4px;min-height:42px;display:flex;align-items:center;}
+.quick-cmd:hover{border-color:var(--border3);color:#fff;background:rgba(74,108,247,0.15);}
+
+/* SF link */
+.sf-link{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);text-decoration:none;padding:12px 18px;border:1px solid var(--border2);font-family:var(--font-hud);font-weight:600;transition:all 0.2s;min-height:46px;}
+.sf-link:hover{border-color:rgba(74,108,247,0.6);color:#fff;background:rgba(74,108,247,0.1);}
+.sf-link svg{width:11px;height:11px;}
+
+/* Text input */
+.cmd-input-wrap{width:100%;max-width:400px;display:flex;gap:0;border:1px solid var(--border2);}
+.cmd-input{flex:1;background:rgba(74,108,247,0.05);border:none;padding:13px 16px;color:#f0f4ff;font-family:var(--font);font-size:16px;outline:none;}
+.cmd-input::placeholder{color:var(--text3);}
+.cmd-send{padding:13px 20px;background:rgba(26,36,117,0.3);color:#fff;border:none;border-left:1px solid var(--border2);font-family:var(--font-hud);font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;min-height:48px;}
+.cmd-send:hover{background:rgba(0,168,255,0.15);}
+
+/* ── APPOINTMENTS ── */
+.section-hud-title{font-size:13px;font-family:var(--font-hud);font-weight:700;color:var(--accent2);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.section-hud-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(74,108,247,0.4),transparent);}
+.appt-card{background:var(--panel);border:1px solid var(--border);padding:16px 16px;margin-bottom:10px;display:flex;flex-direction:column;gap:5px;position:relative;transition:border-color 0.2s;}
+.appt-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;}
+.appt-card.soa-complete::before{background:var(--success);}
+.appt-card.soa-pending::before{background:var(--warn);}
+.appt-card.new-client{border-color:rgba(255,176,32,0.3);}
+.appt-card.new-client::before{background:var(--gold);}
+.appt-time{font-size:13px;color:var(--text2);font-family:var(--font-hud);font-weight:500;}
+.appt-name{font-size:18px;font-weight:700;font-family:var(--font-hud);display:flex;align-items:center;gap:8px;color:#f0f4ff;}
+.new-badge{font-size:11px;font-weight:700;padding:1px 6px;background:var(--gold-dim);color:var(--gold);border:1px solid rgba(240,165,0,0.3);letter-spacing:1px;text-transform:uppercase;font-family:var(--font-mono);}
+.soa-status{font-size:14px;font-family:var(--font-hud);font-weight:500;display:flex;align-items:center;gap:6px;}
+.soa-ok{color:var(--success);}
+.soa-no{color:var(--warn);}
+.appt-tags{display:flex;flex-wrap:wrap;gap:4px;}
+.appt-tag{font-size:12px;padding:1px 7px;background:var(--accent3);border:1px solid var(--border);color:var(--text3);font-family:var(--font-mono);letter-spacing:0.5px;}
+.brief-btn{align-self:flex-start;padding:8px 16px;background:transparent;border:1px solid var(--border2);color:var(--text2);font-size:14px;cursor:pointer;font-family:var(--font-hud);font-weight:600;transition:all 0.2s;min-height:40px;}
+.brief-btn:hover{border-color:rgba(74,108,247,0.6);color:#fff;background:rgba(74,108,247,0.15);}
+
+/* ── CLIENTS ── */
+.client-search{width:100%;background:var(--panel);border:1px solid var(--border);border-bottom:1px solid var(--border2);padding:9px 14px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;margin-bottom:12px;letter-spacing:0.5px;}
+.client-search:focus{border-color:var(--border3);}
+.client-search::placeholder{color:var(--text3);}
+.client-card{background:var(--panel);border:1px solid var(--border);padding:16px 16px;margin-bottom:10px;display:flex;flex-direction:column;gap:5px;position:relative;transition:border-color 0.2s;}
+.client-card:hover{border-color:var(--border2);}
+.client-name-row{font-size:18px;font-weight:700;font-family:var(--font-hud);display:flex;align-items:center;justify-content:space-between;color:#f0f4ff;}
+.client-state-badge{font-size:12px;font-family:var(--font-mono);padding:1px 6px;border:1px solid var(--border);color:var(--text3);}
+.client-plan{font-size:15px;color:var(--text2);font-family:var(--font-hud);font-weight:500;}
+.client-email-txt{font-size:13px;color:var(--text3);font-family:var(--font-mono);}
+.client-soa-row{font-size:14px;font-family:var(--font-hud);font-weight:500;color:var(--text2);}
+.client-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.client-btn{padding:8px 14px;background:transparent;border:1px solid var(--border2);color:var(--text2);font-size:13px;cursor:pointer;font-family:var(--font-hud);font-weight:600;transition:all 0.2s;min-height:40px;display:flex;align-items:center;}
+.client-btn:hover{border-color:rgba(74,108,247,0.6);color:#fff;background:rgba(74,108,247,0.15);}
+.client-btn.danger:hover{border-color:rgba(232,24,42,0.5);color:var(--danger);background:var(--danger-dim);}
+
+/* ── ALERTS ── */
+.alert-card{padding:10px 14px;margin-bottom:8px;display:flex;flex-direction:column;gap:4px;border:1px solid;position:relative;}
+.alert-card.high{background:var(--danger-dim);border-color:rgba(255,56,96,0.25);}
+.alert-card.normal{background:var(--warn-dim);border-color:rgba(255,176,32,0.2);}
+.alert-type{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--warn);font-family:var(--font-hud);}
+.alert-msg{font-size:15px;color:#d4e4ff;line-height:1.75;font-family:var(--font);}
+
+/* ── SETTINGS ── */
+.settings-group{margin-bottom:20px;}
+.settings-group-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent2);margin-bottom:10px;font-family:var(--font-hud);display:flex;align-items:center;gap:8px;}
+.settings-group-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(74,108,247,0.4),rgba(232,24,42,0.2),transparent);}
+.settings-item{background:var(--panel);border:1px solid var(--border);padding:10px 14px;margin-bottom:6px;display:flex;flex-direction:column;gap:3px;}
+.settings-label{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-family:var(--font-mono);}
+.settings-val{font-size:15px;color:#d4e4ff;font-family:var(--font);}
+.settings-input{background:rgba(74,108,247,0.06);border:1px solid var(--border2);padding:10px 12px;color:#f0f4ff;font-family:var(--font);font-size:15px;width:100%;outline:none;margin-top:4px;transition:border-color 0.2s;border-radius:3px;}
+.settings-input:focus{border-color:rgba(74,108,247,0.7);}
+.save-settings-btn{width:100%;padding:14px;background:linear-gradient(135deg,rgba(26,36,117,0.3),rgba(232,24,42,0.2));color:#fff;border:1px solid rgba(74,108,247,0.4);font-family:var(--font-hud);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-top:4px;transition:all 0.2s;min-height:50px;}
+.save-settings-btn:hover{background:linear-gradient(135deg,rgba(26,36,117,0.5),rgba(232,24,42,0.35));border-color:rgba(74,108,247,0.7);}
+.download-btn{width:100%;padding:11px 14px;background:transparent;color:var(--text2);border:1px solid var(--border);font-family:var(--font-mono);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;letter-spacing:0.5px;}
+.download-btn:hover{border-color:var(--border3);color:var(--accent);background:var(--accent3);}
+.download-btn svg{width:13px;height:13px;flex-shrink:0;}
+.settings-link{color:var(--accent2);font-size:15px;text-decoration:none;font-family:var(--font-hud);font-weight:500;display:flex;align-items:center;gap:6px;padding:5px 0;transition:color 0.2s;}
+.settings-link::before{content:'›';font-size:18px;}
+.settings-link:hover{color:#fff;}
+.settings-link.dim{color:var(--text2);}
+.settings-link.dim:hover{color:#fff;}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-bottom:none;padding:24px;width:100%;max-width:480px;display:flex;flex-direction:column;gap:12px;position:relative;}
+.modal::before{content:'NEW CLIENT RECORD';position:absolute;top:-8px;left:16px;background:var(--bg2);padding:0 8px;font-size:11px;font-family:var(--font-mono);color:var(--accent);letter-spacing:3px;}
+.modal-title{font-family:var(--font-hud);font-size:20px;font-weight:700;color:#f0f4ff;}
+.modal-field{display:flex;flex-direction:column;gap:5px;}
+.modal-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);font-family:var(--font-hud);}
+.modal-input{background:rgba(74,108,247,0.06);border:1px solid var(--border2);padding:11px 13px;color:#f0f4ff;font-family:var(--font);font-size:16px;outline:none;transition:border-color 0.2s;border-radius:3px;width:100%;}
+.modal-input:focus{border-color:rgba(74,108,247,0.7);}
+.modal-btns{display:flex;gap:8px;}
+.modal-save{flex:1;padding:14px;background:linear-gradient(135deg,rgba(26,36,117,0.3),rgba(232,24,42,0.2));color:#fff;border:1px solid rgba(74,108,247,0.45);font-family:var(--font-hud);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;min-height:50px;}
+.modal-save:hover{background:linear-gradient(135deg,rgba(26,36,117,0.5),rgba(232,24,42,0.35));}
+.modal-close{padding:14px 20px;background:transparent;color:var(--text2);border:1px solid var(--border2);font-family:var(--font-hud);font-size:15px;cursor:pointer;transition:all 0.2s;min-height:50px;}
+.modal-close:hover{border-color:var(--danger);color:var(--danger);}
+
+/* ── ANIMATIONS ── */
+@keyframes rotate-slow{to{transform:rotate(360deg)}}
+@keyframes ring-expand{0%{transform:scale(0.9);opacity:1}100%{transform:scale(1.6);opacity:0}}
+@keyframes slide-up{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes slide-in{from{transform:translateX(-8px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse-danger{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(255,56,96,0.3)}}
+@keyframes scan-bar{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes data-flow{0%{opacity:0;transform:translateY(4px)}50%{opacity:1}100%{opacity:0;transform:translateY(-4px)}}
+.spin{animation:spin 0.8s linear infinite}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2)}
+
+/* ── SOA TRACKER ── */
+.soa-card{background:var(--panel);border:1px solid var(--border);padding:12px 14px;margin-bottom:8px;display:flex;flex-direction:column;gap:6px;position:relative;}
+.soa-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;}
+.soa-signed::before{background:var(--success);}
+.soa-sent::before{background:var(--warn);}
+.soa-unsent::before{background:var(--text3);}
+.soa-client-name{font-size:18px;font-weight:700;font-family:var(--font-hud);color:#f0f4ff;}
+.soa-status-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.soa-badge{font-size:12px;font-family:var(--font-hud);font-weight:700;padding:4px 10px;border:1px solid;letter-spacing:0.5px;text-transform:uppercase;}
+.soa-badge-signed{color:var(--success);border-color:rgba(0,229,176,0.35);background:var(--success-dim);}
+.soa-badge-sent{color:var(--warn);border-color:rgba(255,176,32,0.35);background:var(--warn-dim);}
+.soa-badge-unsent{color:var(--text3);border-color:var(--border);}
+.soa-timestamp{font-size:13px;color:var(--text2);font-family:var(--font-hud);font-weight:500;}
+.soa-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.soa-btn{padding:9px 16px;background:transparent;border:1px solid var(--border2);color:var(--text2);font-size:14px;cursor:pointer;font-family:var(--font-hud);font-weight:600;transition:all 0.2s;min-height:42px;display:flex;align-items:center;}
+.soa-btn:hover{border-color:rgba(74,108,247,0.6);color:#fff;background:rgba(74,108,247,0.15);}
+.soa-btn.primary{border-color:rgba(34,201,147,0.4);color:var(--success);}
+.soa-btn.primary:hover{background:var(--success-dim);color:#fff;}
+.soa-delivery-select{background:var(--panel);border:1px solid var(--border2);color:#f0f4ff;font-size:14px;font-family:var(--font-mono);font-size:11px;padding:4px 8px;outline:none;cursor:pointer;}
+.soa-history{font-size:13px;color:var(--text3);font-family:var(--font-mono);border-top:1px solid var(--border);padding-top:8px;margin-top:4px;line-height:1.8;}
+
+/* ── PLAN COMPARE ── */
+.compare-card{background:var(--panel);border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;}
+.compare-client-hdr{display:flex;align-items:center;justify-content:space-between;}
+.compare-client-name{font-size:18px;font-weight:700;font-family:var(--font-hud);color:#f0f4ff;}
+.compare-run-btn{padding:10px 18px;background:transparent;border:1px solid rgba(34,201,147,0.4);color:var(--success);font-size:14px;font-family:var(--font-hud);font-weight:700;cursor:pointer;transition:all 0.2s;min-height:44px;}
+.compare-run-btn:hover{background:var(--success-dim);}
+.current-plan-box{background:var(--bg3);border:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:4px;}
+.current-plan-label{font-size:13px;font-family:var(--font-mono);color:var(--text3);letter-spacing:2px;text-transform:uppercase;}
+.current-plan-name{font-size:17px;font-weight:700;color:#f0f4ff;}
+.current-plan-details{display:flex;gap:12px;flex-wrap:wrap;}
+.plan-detail{display:flex;flex-direction:column;gap:1px;}
+.plan-detail-label{font-size:12px;color:var(--text3);font-family:var(--font-hud);font-weight:600;letter-spacing:0.3px;text-transform:uppercase;}
+.plan-detail-val{font-size:15px;color:var(--accent2);font-family:var(--font-hud);font-weight:600;}
+.compare-result-box{background:var(--bg3);border:1px solid var(--border2);padding:12px 14px;display:flex;flex-direction:column;gap:8px;position:relative;}
+.compare-result-box::before{content:'AI ANALYSIS';position:absolute;top:-8px;left:12px;background:var(--bg);padding:0 6px;font-size:11px;font-family:var(--font-mono);color:var(--accent);letter-spacing:2px;}
+.compare-finding{display:flex;gap:10px;font-size:16px;color:#d4e4ff;line-height:1.8;font-family:var(--font);margin-bottom:4px;}
+.finding-icon{flex-shrink:0;font-size:14px;}
+.compare-disclaimer{font-size:13px;color:var(--text3);font-family:var(--font-mono);border-top:1px solid var(--border);padding-top:8px;line-height:1.8;}
+.compare-sf-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:transparent;border:1px solid var(--border2);color:var(--accent2);font-family:var(--font-hud);font-weight:600;font-size:14px;cursor:pointer;transition:all 0.2s;text-decoration:none;min-height:48px;}
+.compare-sf-btn:hover{background:rgba(74,108,247,0.15);border-color:rgba(74,108,247,0.6);color:#fff;}
+
+/* ── DESKTOP ── */
+@media(min-width:768px){
+  .tabs{display:none}
+  .content{display:grid;grid-template-columns:280px 1fr 280px;height:calc(100dvh - 96px);overflow:hidden}
+
+  /* Left panel — Schedule */
+  #panel-appointments{display:block !important;border-right:1px solid var(--border);overflow-y:auto;height:100%;width:auto;padding:20px 16px}
+
+  /* Center — Voice (orb hero) */
+  #panel-voice{display:flex !important;flex-direction:column;align-items:center;justify-content:flex-start;overflow-y:auto;height:100%;border:none;padding:0}
+
+  /* Right panel — Settings/Config */
+  #panel-settings{display:block !important;border-left:1px solid var(--border);overflow-y:auto;height:100%;width:auto;border-right:none;padding:20px 16px}
+
+  /* Hide all non-primary panels on desktop (accessible via tabs on mobile) */
+  #panel-clients{display:none !important}
+  #panel-soa{display:none !important}
+  #panel-compare{display:none !important}
+  #panel-alerts{display:none !important}
+
+  /* Voice panel fills center */
+  #panel-voice .voice-panel{
+    width:100%;max-width:600px;margin:0 auto;
+    padding:20px 24px 24px;
+    display:flex;flex-direction:column;align-items:center;
+    gap:16px;min-height:100%;
+  }
+
+  /* Bigger orb on desktop */
+  .orb-wrap{width:300px;height:300px}
+  .orb-canvas{width:300px;height:300px}
+
+  /* Response box wider on desktop */
+  .response-box{max-width:560px}
+  .transcript-box{max-width:560px}
+  .pending-box{max-width:560px}
+  .notes-box{max-width:560px}
+  .summary-box{max-width:560px}
+  .quick-cmds{max-width:520px}
+  .cmd-input-wrap{max-width:520px}
+}
+
+/* Bottom nav bar on desktop — always-visible tabs for SOA/Compare/Alerts */
+@media(min-width:768px){
+  .desktop-bottom-nav{
+    display:flex;align-items:center;justify-content:center;gap:4px;
+    height:46px;background:rgba(255,255,255,0.97);
+    border-top:1px solid rgba(26,36,117,0.12);
+    padding:0 16px;
+  }
+  .dbn-tab{
+    padding:8px 18px;font-size:13px;font-weight:600;
+    font-family:var(--font-hud);letter-spacing:0.5px;
+    color:#6a7fa8;cursor:pointer;border-radius:6px;
+    transition:all 0.2s;text-transform:uppercase;
+  }
+  .dbn-tab:hover,.dbn-tab.active{background:rgba(26,36,117,0.08);color:#1a2475;}
+  .dbn-tab.active{border-bottom:2px solid #e8182a;}
+}
+@media(max-width:767px){
+  .desktop-bottom-nav{display:none}
+}
+</style>
+</head>
+<body>
+<div class="corner-tl"></div><div class="corner-tr"></div>
+<div class="corner-bl"></div><div class="corner-br"></div>
+
+<!-- ══ SETUP ══ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <div style="width:64px;height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+        <img src="https://raw.githubusercontent.com/dwdalton80/Voice-First-AI-Agent-Medicare/main/ddi-logo.png"
+          alt="D&D Insurance Group"
+          style="width:64px;height:64px;object-fit:contain;"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <!-- Fallback SVG if image fails to load -->
+        <svg viewBox="0 0 60 68" width="48" height="54" style="display:none">
+          <defs>
+            <linearGradient id="sg1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1a2475"/>
+              <stop offset="50%" stop-color="#7b1fa2"/>
+              <stop offset="100%" stop-color="#e8182a"/>
+            </linearGradient>
+          </defs>
+          <path d="M30 2 L56 12 L56 40 Q56 58 30 66 Q4 58 4 40 L4 12 Z" fill="none" stroke="url(#sg1)" stroke-width="2.5"/>
+          <text x="30" y="36" text-anchor="middle" font-family="Georgia,serif" font-weight="700" font-size="22" fill="#1a2475" letter-spacing="-1">DD</text>
+        </svg>
+      </div>
+      <div>
+        <div class="setup-title">D&amp;D Ins Group AI Agent</div>
+        <div class="setup-subtitle">Sarah — Your Medicare AI Assistant</div>
+      </div>
+    </div>
+    <div class="setup-sub">Enter your Anthropic API key to activate Sarah, your D&amp;D Insurance Group AI assistant.</div>
+    <div class="setup-field">
+      <div class="setup-label">Anthropic API Key</div>
+      <input class="setup-input" id="setup-key" type="password" placeholder="sk-ant-...">
+    </div>
+    <div class="setup-field">
+      <div class="setup-label">Deepgram API Key <span style="color:var(--text3);font-weight:400">// optional — voice STT</span></div>
+      <input class="setup-input" id="setup-dg" type="password" placeholder="leave blank for text-only mode">
+    </div>
+    <button class="setup-btn" onclick="startApp()">[ INITIALIZE SYSTEM ]</button>
+    <div class="setup-hint">
+      console.anthropic.com · console.deepgram.com<br>
+      <span style="color:var(--danger)">⚠</span> Sign Deepgram HIPAA BAA before processing PHI audio
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app">
+  <header class="header">
+    <div class="header-left">
+      <div style="display:flex;align-items:center;gap:8px">
+        <img src="https://raw.githubusercontent.com/dwdalton80/Voice-First-AI-Agent-Medicare/main/ddi-logo.png"
+          alt="D&D"
+          style="width:28px;height:28px;object-fit:contain;flex-shrink:0;"
+          onerror="this.style.display='none'">
+        <div class="h-logo">D&amp;D Ins Group <span>AI</span></div>
+      </div>
+      <div class="mode-pill mode-solo" id="mode-pill">● SOLO</div>
+    </div>
+    <div class="header-center">
+      <div id="meeting-client-hud" style="display:none" class="meeting-client-hud">
+        <div class="hud-dot"></div>
+        <span id="meeting-client-name"></span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="h-btn" onclick="runBriefing()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Brief
+      </button>
+      <button class="h-btn" onclick="openAddClient()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Add
+      </button>
+    </div>
+  </header>
+
+  <div id="notif-bar" style="display:none"></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('voice')">🎙 Voice</div>
+    <div class="tab" onclick="showTab('appointments')">📅 Schedule</div>
+    <div class="tab" onclick="showTab('clients')">👤 Clients</div>
+    <div class="tab" onclick="showTab('soa')">📋 SOA</div>
+    <div class="tab" onclick="showTab('compare')">📊 Compare</div>
+    <div class="tab" onclick="showTab('alerts')">⚡ Alerts</div>
+    <div class="tab" onclick="showTab('settings')">⚙ Config</div>
+  </div>
+
+  <div class="content">
+
+    <!-- APPOINTMENTS -->
+    <div class="tab-panel" id="panel-appointments">
+      <div class="section-hud-title">7-Day Schedule</div>
+      <div id="appt-list"></div>
+    </div>
+
+    <!-- VOICE -->
+    <div class="tab-panel active" id="panel-voice">
+      <div class="voice-panel" id="voice-panel">
+
+        <!-- HERO ORB SECTION -->
+        <div id="orb-hero" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:8px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+            <img src="https://raw.githubusercontent.com/dwdalton80/Voice-First-AI-Agent-Medicare/main/ddi-logo.png"
+              alt="D&D Insurance Group"
+              style="width:40px;height:40px;object-fit:contain;"
+              onerror="this.style.display='none'">
+            <div>
+              <div style="font-family:var(--font-hud);font-size:22px;font-weight:800;color:#f0f4ff;letter-spacing:1px;line-height:1.1">Sarah</div>
+              <div style="font-family:var(--font-hud);font-size:13px;color:var(--text2);letter-spacing:1px;text-transform:uppercase">D&amp;D Insurance Group · AI Agent</div>
+            </div>
+          </div>
+
+          <div class="orb-wrap" id="orb-wrap"
+            onmousedown="startListen()" onmouseup="stopListen()"
+            ontouchstart="startListen(event)" ontouchend="stopListen(event)">
+            <canvas class="orb-canvas" id="orb-canvas" width="240" height="240"></canvas>
+            <div class="orb-center" id="orb-center">
+              <svg id="orb-icon" viewBox="0 0 24 24" fill="none" stroke="rgba(74,108,247,0.85)" stroke-width="1.5">
+                <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="orb-hint" id="orb-hint">HOLD TO SPEAK · SPACE · SAY "HEY SARAH"</div>
+
+          <!-- Wake word status indicator -->
+          <div id="wake-status" style="font-size:12px;font-family:var(--font-mono);color:var(--text3);display:flex;align-items:center;gap:6px">
+            <div id="wake-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text3)"></div>
+            <span id="wake-label">Wake word: off</span>
+          </div>
+        </div>
+
+        <!-- RESPONSE AREA -->
+
+        <div id="transcript-box" class="transcript-box" style="display:none">
+          <div class="transcript-label">Input Received</div>
+          <div class="transcript-text" id="transcript-text"></div>
+        </div>
+
+        <div id="response-box" class="response-box" style="display:none"></div>
+
+        <div id="pending-box" class="pending-box" style="display:none">
+          <div class="pending-text" id="pending-text"></div>
+          <div class="pending-btns">
+            <button class="btn-confirm" onclick="approvePending()">[ CONFIRM ]</button>
+            <button class="btn-cancel" onclick="cancelPending()">Abort</button>
+          </div>
+        </div>
+
+        <div id="notes-box" class="notes-box" style="display:none">
+          <div class="notes-header">
+            <div class="notes-title-text">Session Log</div>
+            <div class="notes-count" id="notes-count">0 entries</div>
+          </div>
+          <div class="notes-list" id="notes-list">
+            <div class="notes-empty">// say "add note:" followed by your note</div>
+          </div>
+          <button class="end-meeting-btn" onclick="endMeeting()">[ END SESSION + DEBRIEF ]</button>
+        </div>
+
+        <div id="summary-box" class="summary-box" style="display:none"></div>
+
+        <!-- TEXT INPUT — always visible below orb -->
+        <div style="width:100%;max-width:520px">
+          <div class="cmd-input-wrap" style="border-radius:12px;overflow:hidden;border:1.5px solid var(--border2);box-shadow:0 4px 24px rgba(26,36,117,0.2)">
+            <input id="text-cmd" class="cmd-input" type="text"
+              placeholder="Ask Sarah anything... or say Hey Sarah"
+              onkeydown="if(event.key==='Enter')sendTextCmd()"
+              style="font-size:16px;padding:16px 18px">
+            <button class="cmd-send" onclick="sendTextCmd()"
+              style="padding:16px 22px;font-size:15px;background:linear-gradient(135deg,rgba(26,36,117,0.5),rgba(232,24,42,0.3))">
+              Ask
+            </button>
+          </div>
+        </div>
+
+        <!-- QUICK COMMANDS -->
+        <div id="quick-cmds" class="quick-cmds">
+          <div class="quick-cmd" onclick="typeCommand('Brief me on')">Brief a client</div>
+          <div class="quick-cmd" onclick="typeCommand('Send SOA to')">Send SOA</div>
+          <div class="quick-cmd" onclick="typeCommand('Start meeting with')">Start meeting</div>
+          <div class="quick-cmd" onclick="typeCommand('Check emails')">Check emails</div>
+          <div class="quick-cmd" onclick="typeCommand('Add note:')">Add note</div>
+          <div class="quick-cmd" onclick="typeCommand('Remind me to call')">Remind me</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div class="tab-panel" id="panel-clients">
+      <input class="client-search" id="client-search" placeholder="// search client database..." oninput="renderClients(this.value)">
+      <div id="client-list"></div>
+    </div>
+
+    <!-- SOA TRACKING -->
+    <div class="tab-panel" id="panel-soa">
+      <div class="section-hud-title">SOA Status Tracker</div>
+      <div style="font-size:14px;color:var(--text2);font-family:var(--font-mono);margin-bottom:14px;line-height:1.9;padding:8px 10px;background:var(--panel);border:1px solid var(--border)">
+        // CMS CY2027 Rule (eff. Oct 1, 2026): 48-hour waiting period eliminated.<br>
+        // SOA must be signed BEFORE the personal marketing appointment begins.<br>
+        // Written SOA required for all in-person appointments. Valid 12 months.
+      </div>
+      <div id="soa-list"></div>
+    </div>
+
+    <!-- PLAN COMPARE -->
+    <div class="tab-panel" id="panel-compare">
+      <div class="section-hud-title">Plan Comparison</div>
+      <div style="margin-bottom:12px;display:flex;gap:8px">
+        <input id="compare-search" class="client-search" style="margin-bottom:0;flex:1" placeholder="// search client to compare plans..." oninput="filterCompareClients(this.value)">
+      </div>
+      <div id="compare-client-list"></div>
+      <div id="compare-result" style="display:none"></div>
+    </div>
+
+    <!-- ALERTS -->
+    <div class="tab-panel" id="panel-alerts">
+      <div class="section-hud-title">Eligibility Alerts</div>
+      <div id="alert-list"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tab-panel" id="panel-settings">
+      <div class="settings-group">
+        <div class="settings-group-title">Broker Profile</div>
+        <div class="settings-item"><div class="settings-label">Operator</div><div class="settings-val">Larry · D&D Insurance Group</div></div>
+        <div class="settings-item"><div class="settings-label">Email</div><div class="settings-val">larry@ddinsgroup.com</div></div>
+        <div class="settings-item"><div class="settings-label">NPN</div><div class="settings-val">20791041</div></div>
+        <div class="settings-item"><div class="settings-label">Licensed States</div><div class="settings-val">Oklahoma · Texas</div></div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title">API Configuration</div>
+        <div class="settings-item">
+          <div class="settings-label">Anthropic Key</div>
+          <input class="settings-input" id="settings-key" type="password" placeholder="sk-ant-...">
+        </div>
+        <div class="settings-item">
+          <div class="settings-label">Deepgram Key</div>
+          <input class="settings-input" id="settings-dg" type="password" placeholder="sign HIPAA BAA first">
+        </div>
+        <div class="settings-item">
+          <div class="settings-label">Agent Voice</div>
+          <select class="settings-input" id="settings-voice" style="cursor:pointer">
+            <optgroup label="── Female Voices ──">
+              <option value="aura-2-thalia-en">Thalia — Professional, Clear</option>
+              <option value="aura-2-luna-en">Luna — Warm, Conversational</option>
+              <option value="aura-2-stella-en">Stella — Bright, Friendly</option>
+              <option value="aura-2-athena-en">Athena — Confident, Authoritative</option>
+              <option value="aura-2-hera-en">Hera — Calm, Measured</option>
+            </optgroup>
+            <optgroup label="── Male Voices ──">
+              <option value="aura-2-orion-en">Orion — Deep, Professional</option>
+              <option value="aura-2-arcas-en">Arcas — Clear, Direct</option>
+              <option value="aura-2-perseus-en">Perseus — Warm, Steady</option>
+              <option value="aura-2-angus-en">Angus — Friendly, Approachable</option>
+              <option value="aura-2-helios-en">Helios — Energetic, Confident</option>
+            </optgroup>
+          </select>
+          <button onclick="previewVoice()" style="margin-top:6px;width:100%;padding:7px;background:transparent;color:var(--text3);border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;letter-spacing:1px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--border3)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">[ PREVIEW VOICE ]</button>
+        </div>
+        <button class="save-settings-btn" onclick="saveSettings()">[ SAVE CONFIGURATION ]</button>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title">System Links</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <a href="https://www.sunfirematrix.com/app/agent/ember/" target="_blank" class="settings-link">SunfireMatrix Agent Portal</a>
+          <a href="https://www.sunfirematrix.com/app/consumer/ember/?sfpath=spa&sfagid=20791041" target="_blank" class="settings-link">Client PURL Link</a>
+          <a href="https://sparkadvisor.com" target="_blank" class="settings-link">SparkAdvisor CRM</a>
+          <a href="https://console.anthropic.com" target="_blank" class="settings-link dim">Anthropic Console</a>
+          <a href="https://console.deepgram.com" target="_blank" class="settings-link dim">Deepgram Console</a>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title">Export</div>
+        <button class="download-btn" onclick="downloadApp()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download DDI-Medicare-Agent.html
+        </button>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;line-height:1.6;font-family:var(--font-mono)">// saves app to device · open in any browser</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Add Client Modal -->
+<div class="modal-overlay" id="add-client-modal" style="display:none" onclick="if(event.target===this)closeAddClient()">
+  <div class="modal">
+    <div class="modal-title">New Client Record</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="modal-field"><div class="modal-label">Full Name *</div><input class="modal-input" id="mc-name" placeholder="Jane Smith"></div>
+      <div class="modal-field"><div class="modal-label">Date of Birth</div><input class="modal-input" id="mc-dob" type="date"></div>
+      <div class="modal-field"><div class="modal-label">Email</div><input class="modal-input" id="mc-email" type="email" placeholder="jane@example.com"></div>
+      <div class="modal-field"><div class="modal-label">Phone</div><input class="modal-input" id="mc-phone" type="tel" placeholder="405-555-1234"></div>
+      <div class="modal-field"><div class="modal-label">ZIP Code</div><input class="modal-input" id="mc-zip" placeholder="73101"></div>
+      <div class="modal-field">
+        <div class="modal-label">State</div>
+        <select class="modal-input" id="mc-state">
+          <option value="OK">Oklahoma</option>
+          <option value="TX">Texas</option>
+        </select>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--accent);font-family:var(--font-mono);letter-spacing:2px;margin:4px 0 2px">// CURRENT PLAN</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="modal-field"><div class="modal-label">Carrier</div><input class="modal-input" id="mc-carrier" placeholder="e.g. Humana"></div>
+      <div class="modal-field"><div class="modal-label">Plan Name</div><input class="modal-input" id="mc-plan" placeholder="e.g. Gold Plus HMO"></div>
+      <div class="modal-field">
+        <div class="modal-label">Plan Type</div>
+        <select class="modal-input" id="mc-plan-type">
+          <option value="">Select type</option>
+          <option value="MA">Medicare Advantage (MA)</option>
+          <option value="MA-PD">MA with Part D (MAPD)</option>
+          <option value="PDP">Part D Drug Plan (PDP)</option>
+          <option value="Medigap">Medicare Supplement</option>
+          <option value="DSNP">Dual Special Needs (DSNP)</option>
+          <option value="Original">Original Medicare</option>
+          <option value="None">No current plan</option>
+        </select>
+      </div>
+      <div class="modal-field"><div class="modal-label">Monthly Premium</div><input class="modal-input" id="mc-premium" placeholder="$0.00"></div>
+      <div class="modal-field"><div class="modal-label">Annual MOOP</div><input class="modal-input" id="mc-moop" placeholder="e.g. $4,000"></div>
+      <div class="modal-field"><div class="modal-label">Star Rating</div><input class="modal-input" id="mc-stars" placeholder="e.g. 4.0" type="number" min="1" max="5" step="0.5"></div>
+    </div>
+    <div style="font-size:9px;color:var(--accent);font-family:var(--font-mono);letter-spacing:2px;margin:4px 0 2px">// CLINICAL</div>
+    <div class="modal-field"><div class="modal-label">Medications (comma separated)</div><input class="modal-input" id="mc-drugs" placeholder="Metformin 500mg, Lisinopril 10mg"></div>
+    <div class="modal-field"><div class="modal-label">Preferred Providers</div><input class="modal-input" id="mc-providers" placeholder="Dr. Smith - OU Medical, St. Francis Hospital"></div>
+    <div class="modal-field"><div class="modal-label">Notes</div><input class="modal-input" id="mc-notes" placeholder="Turning 65 in July, interested in MA plans"></div>
+    <div class="modal-btns">
+      <button class="modal-save" onclick="saveClient()">[ SAVE RECORD ]</button>
+      <button class="modal-close" onclick="closeAddClient()">Cancel</button>
+    </div>
+  </div>
+</div>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DDI MEDICARE VOICE AGENT — Browser Runtime
+// ═══════════════════════════════════════════════════════════════
+
+const SUNFIRE_PURL = 'https://www.sunfirematrix.com/app/consumer/ember/?sfpath=spa&sfagid=20791041';
+const BROKER = { name: 'Larry', email: 'larry@ddinsgroup.com', npn: '20791041', agency: 'D&D Insurance Group', states: ['OK', 'TX'] };
+const BACKEND = 'https://voice-first-ai-agent-medicare-production.up.railway.app';
+
+// ── State ──────────────────────────────────────────────────────
+let state = {
+  mode: 'solo',
+  isListening: false,
+  isProcessing: false,
+  sessionNotes: [],
+  activeClient: null,
+  sessionId: null,
+  pendingAction: null,
+  clients: [],
+  appointments: [],
+  alerts: [],
+  anthropicKey: '',
+  deepgramKey: '',
+  voice: 'aura-2-thalia-en',
+};
+
+// ── Storage ────────────────────────────────────────────────────
+function save(key, val) { try { localStorage.setItem('ddi_' + key, JSON.stringify(val)); } catch(e){} }
+function load(key, def) { try { const v = localStorage.getItem('ddi_' + key); return v ? JSON.parse(v) : def; } catch(e){ return def; } }
+
+// ── Boot ───────────────────────────────────────────────────────
+function startApp() {
+  const key = document.getElementById('setup-key').value.trim();
+  const dg = document.getElementById('setup-dg').value.trim();
+  if (!key) { alert('Please enter your Anthropic API key'); return; }
+  state.anthropicKey = key;
+  state.deepgramKey = dg;
+  save('anthro_key', key);
+  save('dg_key', dg);
+  launch();
+}
+
+function launch() {
+  state.anthropicKey = load('anthro_key', '');
+  state.deepgramKey = load('dg_key', '');
+  state.voice = load('voice', 'aura-2-thalia-en');
+  state.clients = load('clients', []);
+  state.appointments = load('appointments', []);
+
+  if (!state.anthropicKey) {
+    document.getElementById('setup-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  // Populate settings fields
+  document.getElementById('settings-key').value = state.anthropicKey;
+  document.getElementById('settings-dg').value = state.deepgramKey;
+  const voiceSel = document.getElementById('settings-voice');
+  if (voiceSel) voiceSel.value = state.voice || 'aura-2-thalia-en';
+
+  renderAppointments();
+  renderClients('');
+  renderSOATracker();
+  filterCompareClients('');
+  checkEligibility();
+  setupKeyboard();
+  connectBackend();
+  initWakeWord();
+}
+
+window.addEventListener('load', launch);
+
+function saveSettings() {
+  state.anthropicKey = document.getElementById('settings-key').value.trim();
+  state.deepgramKey = document.getElementById('settings-dg').value.trim();
+  const voiceSel = document.getElementById('settings-voice');
+  if (voiceSel) state.voice = voiceSel.value;
+  save('anthro_key', state.anthropicKey);
+  save('dg_key', state.deepgramKey);
+  save('voice', state.voice);
+  showNotif('Settings saved — Sarah is ready', 'success');
+  // Re-enable wake word now that key is set
+  if (state.anthropicKey && !wakeWordActive) {
+    setTimeout(enableWakeWord, 500);
+  }
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab[onclick="showTab('${name}')"]`).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── Keyboard shortcut ──────────────────────────────────────────
+function setupKeyboard() {
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      if (!state.isListening) startListen();
+    }
+  });
+  window.addEventListener('keyup', e => {
+    if (e.code === 'Space' && state.isListening) { e.preventDefault(); stopListen(); }
+  });
+}
+
+// ── Voice: STT via Deepgram WebSocket ─────────────────────────
+let wsSTT = null, mediaStream = null, audioCtx = null, processor = null;
+
+function startListen(e) {
+  if (e) e.preventDefault();
+  if (state.isListening || state.isProcessing) return;
+
+  if (!state.deepgramKey) {
+    // No Deepgram key — focus text input instead
+    document.getElementById('text-cmd').focus();
+    showNotif('No Deepgram key — use text input below', 'warn');
+    return;
+  }
+
+  state.isListening = true;
+  setOrbState('listening');
+
+  navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true } })
+    .then(stream => {
+      mediaStream = stream;
+      const params = new URLSearchParams({ model: 'nova-3', language: 'en-US', smart_format: 'true', punctuate: 'true', interim_results: 'false', endpointing: '300', encoding: 'linear16', sample_rate: '16000' });
+      wsSTT = new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`, ['token', state.deepgramKey]);
+
+      wsSTT.onmessage = e => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'Results' && msg.is_final) {
+            const t = msg.channel?.alternatives?.[0]?.transcript;
+            if (t && t.trim()) { stopListen(); processCommand(t.trim()); }
+          }
+        } catch(err){}
+      };
+
+      wsSTT.onopen = () => {
+        audioCtx = new AudioContext({ sampleRate: 16000 });
+        const src = audioCtx.createMediaStreamSource(stream);
+        processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        processor.onaudioprocess = ev => {
+          if (wsSTT?.readyState !== 1) return;
+          const f32 = ev.inputBuffer.getChannelData(0);
+          const i16 = new Int16Array(f32.length);
+          for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-32768, Math.min(32767, f32[i] * 32767));
+          wsSTT.send(i16.buffer);
+        };
+        src.connect(processor);
+        processor.connect(audioCtx.destination);
+      };
+
+      wsSTT.onerror = () => { stopListen(); showNotif('Microphone error', 'error'); };
+    })
+    .catch(() => { stopListen(); showNotif('Microphone access denied', 'error'); });
+}
+
+function stopListen(e) {
+  if (e) e.preventDefault();
+  if (!state.isListening) return;
+  state.isListening = false;
+  if (processor) { processor.disconnect(); processor = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (wsSTT) { try { wsSTT.close(); } catch(e){} wsSTT = null; }
+  if (!state.isProcessing) setOrbState('idle');
+}
+
+// ── Text fallback ──────────────────────────────────────────────
+function sendTextCmd() {
+  const inp = document.getElementById('text-cmd');
+  const cmd = inp.value.trim();
+  if (!cmd) return;
+  inp.value = '';
+  processCommand(cmd);
+}
+
+function typeCommand(prefix) {
+  const inp = document.getElementById('text-cmd');
+  inp.value = prefix + ' ';
+  inp.focus();
+  showTab('voice');
+}
+
+// ── Process command → Claude → action ─────────────────────────
+async function processCommand(transcript) {
+  // Guard: must have Anthropic key
+  if (!state.anthropicKey) {
+    showResponse("Sarah needs your Anthropic API key to respond. Go to ⚙ Config and paste your key, then click Save.");
+    speak("Please add your Anthropic API key in the Config settings to activate me.");
+    return;
+  }
+
+  setOrbState('processing');
+  state.isProcessing = true;
+  showTranscript(transcript);
+  hideResponse();
+
+  try {
+    const { intent, entities } = await classifyIntent(transcript);
+    await routeIntent(intent, entities, transcript);
+  } catch(e) {
+    const msg = e.message || '';
+    if (msg.toLowerCase().includes('api key') || msg.includes('401') || msg.includes('x-api-key')) {
+      showResponse("Your Anthropic API key looks incorrect or expired. Go to ⚙ Config, re-paste your key from console.anthropic.com, and click Save.");
+      speak("Your API key needs to be updated. Check the Config settings.");
+    } else {
+      showResponse(`Sarah ran into an issue: ${msg}. Try again or check your connection.`);
+    }
+  } finally {
+    state.isProcessing = false;
+    setOrbState('idle');
+  }
+}
+
+// ── Intent Classification (Claude Haiku) ──────────────────────
+async function classifyIntent(transcript) {
+  const resp = await callClaude('claude-haiku-4-5', 200,
+    `Classify this Medicare broker voice command. Return ONLY valid JSON:
+{"intent":"<intent>","entities":{"client_name":"","plan_name":"","note_text":"","time_ref":""}}
+Intents: brief_me, send_soa, start_meeting, add_note, end_meeting, approve, cancel, check_email, reply_email, add_task, new_lead, pull_plans, start_enrollment, morning_briefing, compare_plans, mark_soa_signed, unknown
+Extra rules: "compare plans for [name]" or "analyze plans for [name]" → compare_plans. "mark SOA signed for [name]" or "[name] signed the SOA" → mark_soa_signed.
+Rules: "looks good"/"send it"/"confirmed" → approve. "cancel"/"never mind" → cancel. Extract client names, note text, time references.`,
+    transcript
+  );
+  try { return JSON.parse(resp); } catch { return { intent: 'unknown', entities: {} }; }
+}
+
+// ── Intent Router ──────────────────────────────────────────────
+async function routeIntent(intent, entities, raw) {
+  switch (intent) {
+
+    case 'brief_me': {
+      const cn = entities.client_name;
+      if (!cn) { showResponse("Who would you like me to brief you on?"); return; }
+      const client = findClient(cn);
+      if (!client) { showResponse(`I couldn't find "${cn}" in your client list. You can add them using the Add button.`); return; }
+      const briefing = await buildBriefing(client);
+      showResponse(briefing);
+      await speak(briefing);
+      break;
+    }
+
+    case 'send_soa': {
+      const cn = entities.client_name;
+      if (!cn) { showResponse("Who should I send the SOA to?"); return; }
+      const client = findClient(cn);
+      if (!client) { showResponse(`I couldn't find "${cn}" in your client list.`); return; }
+      const method = entities.note_text?.toLowerCase().includes('email') ? 'email' : 'text';
+      const msg = `Send SOA to ${client.name} via ${method}${client.phone && method==='text' ? ' at ' + client.phone : ''}${client.email && method==='email' ? ' at ' + client.email : ''}. SOA must be signed before the meeting begins (CMS CY2027 rule). Say "send it" to confirm.`;
+      setPending(msg, () => {
+        sendSOA(client.id, method);
+        showResponse(`SOA sent to ${client.name} via ${method}. Logged in SOA tracker. Say "mark SOA signed for ${client.name}" when they complete it.`);
+        showTab('soa');
+      });
+      break;
+    }
+
+    case 'compare_plans': {
+      const cn = entities.client_name;
+      const client = cn ? findClient(cn) : state.activeClient;
+      if (!client) { showResponse("Which client should I analyze? Say 'compare plans for [name]'"); return; }
+      showTab('compare');
+      filterCompareClients(client.name);
+      setTimeout(() => runComparison(client.id), 300);
+      showResponse(`Running plan analysis for ${client.name}...`);
+      break;
+    }
+
+    case 'start_meeting': {
+      const cn = entities.client_name;
+      const client = cn ? findClient(cn) : null;
+      if (client && !client.soaCompleted) {
+        showResponse(`⚠️ CMS Warning: SOA has not been completed for ${client.name}. You should have a completed SOA before presenting plans. Say "override" to proceed anyway, or "send SOA" to send it now.`);
+        return;
+      }
+      startMeeting(client || { name: cn || 'Client' });
+      break;
+    }
+
+    case 'add_note': {
+      const note = entities.note_text || raw.replace(/^add note[:\s]*/i, '');
+      if (!note) { showResponse("What should I note?"); return; }
+      if (state.mode !== 'meeting') { showResponse("Start a meeting first, then I can add notes."); return; }
+      addNote(note);
+      break;
+    }
+
+    case 'end_meeting':
+      await endMeeting();
+      break;
+
+    case 'approve':
+      if (state.pendingAction) { state.pendingAction(); state.pendingAction = null; hidePending(); }
+      else { showResponse("There's nothing waiting for approval right now."); }
+      break;
+
+    case 'cancel':
+      cancelPending();
+      break;
+
+    case 'add_task': {
+      const cn = entities.client_name;
+      const timeRef = entities.time_ref || 'in 2 weeks';
+      const client = cn ? findClient(cn) : null;
+      const desc = `Follow up with ${cn || 'client'} ${timeRef}`;
+      showResponse(`Task created: "${desc}". I've added it to your follow-up list.`);
+      if (client) { client.tasks = client.tasks || []; client.tasks.push({ desc, created: new Date().toISOString() }); saveClients(); }
+      showNotif('Task created', 'success');
+      break;
+    }
+
+    case 'new_lead': {
+      openAddClient();
+      showResponse("Opening the new client form. Fill in what you know — everything is optional except the name.");
+      break;
+    }
+
+    case 'pull_plans':
+    case 'start_enrollment': {
+      const cn = entities.client_name;
+      const client = cn ? findClient(cn) : state.activeClient;
+      showResponse(`Opening SunfireMatrix${client ? ' for ' + client.name : ''}. Review all fields before submitting enrollment.`);
+      window.open(SUNFIRE_PURL, '_blank');
+      break;
+    }
+
+    case 'check_email': {
+      showResponse(`To check your Outlook emails from clients, say "Reply to [client name]" and I'll draft it. For full email access you'll need the backend server connected to Microsoft Graph. For now, you can open Outlook directly.`);
+      break;
+    }
+
+    case 'morning_briefing':
+      await triggerBriefing();
+      break;
+
+    case 'mark_soa_signed': {
+      const cn = entities.client_name;
+      const client = cn ? findClient(cn) : null;
+      if (!client) { showResponse("Which client's SOA should I mark as signed?"); return; }
+      markSOASigned(client.id);
+      showResponse(`SOA marked as signed for ${client.name}. Logged with today's date. Valid for 12 months.`);
+      showTab('soa');
+      break;
+    }
+
+    case 'unknown':
+    default: {
+      // Try to be helpful with freeform questions
+      const answer = await callClaude('claude-sonnet-4-6', 400,
+        `You are Sarah, a voice AI assistant for Larry, a Medicare insurance broker in Oklahoma and Texas (D&D Insurance Group, NPN 20791041). Answer this broker question concisely and accurately. Focus on Medicare rules, OK/TX state specifics, or broker workflow. If it's a voice command you don't understand, explain what commands you support. Keep response under 3 sentences.`,
+        raw
+      );
+      showResponse(answer);
+      await speak(answer);
+    }
+  }
+}
+
+// ── Meeting flow ───────────────────────────────────────────────
+function startMeeting(client) {
+  state.mode = 'meeting';
+  state.activeClient = client;
+  state.sessionNotes = [];
+  state.sessionId = Date.now().toString();
+  setMode('meeting');
+  document.getElementById('notes-box').style.display = 'block';
+  document.getElementById('quick-cmds').style.display = 'none';
+  document.getElementById('meeting-client-name').style.display = 'block';
+  document.getElementById('meeting-client-name').textContent = `● ${client.name}`;
+  hideResponse();
+  hidePending();
+  showNotif(`Meeting started with ${client.name}`, 'success');
+}
+
+function addNote(text) {
+  state.sessionNotes.push(text);
+  renderNotes();
+  document.getElementById('response-box').style.display = 'none';
+}
+
+function renderNotes() {
+  const list = document.getElementById('notes-list');
+  const count = document.getElementById('notes-count');
+  count.textContent = `${state.sessionNotes.length} entries`;
+  if (state.sessionNotes.length === 0) {
+    list.innerHTML = '<div class="notes-empty">// say "add note:" followed by your note</div>';
+  } else {
+    list.innerHTML = state.sessionNotes.map((n,i) => `<div class="note-item"><span class="note-prefix">[${String(i+1).padStart(2,'0')}]</span>${escHtml(n)}</div>`).join('');
+    list.scrollTop = list.scrollHeight;
+  }
+}
+
+async function endMeeting() {
+  if (state.mode !== 'meeting') { showResponse("No active meeting session."); return; }
+  if (state.sessionNotes.length === 0) { showResponse("I don't have any notes from this meeting. Try adding some notes first with 'Add note: ...'"); return; }
+
+  setOrbState('processing');
+  state.isProcessing = true;
+
+  try {
+    const summaryJson = await callClaude('claude-sonnet-4-6', 800,
+      `Summarize this Medicare broker meeting. Return ONLY valid JSON:
+{"summary":"2-3 sentence narrative","action_items":[{"task":"...","due_date":"in X days/weeks"}],"disposition":"enrolled|follow_up|declined|callback","tts":"spoken summary for broker approval, 2-3 sentences"}`,
+      `Client: ${state.activeClient?.name || 'Unknown'}\nNotes:\n${state.sessionNotes.join('\n')}`
+    );
+
+    let summary;
+    try { summary = JSON.parse(summaryJson); }
+    catch { summary = { summary: state.sessionNotes.join(' '), action_items: [], disposition: 'follow_up', tts: state.sessionNotes.join(' ') }; }
+
+    state.mode = 'review';
+    setMode('review');
+    document.getElementById('notes-box').style.display = 'none';
+
+    // Show summary
+    const sBox = document.getElementById('summary-box');
+    sBox.style.display = 'flex';
+    sBox.innerHTML = `
+      <div class="summary-title">Meeting Summary — ${escHtml(state.activeClient?.name || '')}</div>
+      <div class="summary-text">${escHtml(summary.summary)}</div>
+      ${summary.action_items?.length > 0 ? `
+        <div>
+          <div class="summary-section">Action Items</div>
+          ${summary.action_items.map(a => `<div class="action-item"><div class="ai-dot"></div><span>${escHtml(a.task)}</span><span class="due-tag">${escHtml(a.due_date||'')}</span></div>`).join('')}
+        </div>` : ''}
+      <div class="disposition-row">Disposition: <strong style="color:${dispColor(summary.disposition)}">${(summary.disposition||'').replace('_',' ').toUpperCase()}</strong></div>
+    `;
+
+    const readback = (summary.tts || summary.summary) + " Say 'looks good' to save, or tell me what to change.";
+    setPending(readback, () => {
+      // Save to local storage as activity log
+      if (state.activeClient) {
+        state.activeClient.lastMeeting = new Date().toISOString();
+        state.activeClient.lastSummary = summary.summary;
+        state.activeClient.disposition = summary.disposition;
+        if (summary.action_items?.length) {
+          state.activeClient.tasks = (state.activeClient.tasks || []).concat(
+            summary.action_items.map(a => ({ desc: a.task, due: a.due_date, created: new Date().toISOString() }))
+          );
+        }
+        saveClients();
+      }
+      endMeetingCleanup();
+      showNotif('Meeting notes saved', 'success');
+      showResponse('✓ Meeting notes saved. ' + (summary.action_items?.length || 0) + ' follow-up tasks created. When SparkAdvisor webhooks are connected, these will sync automatically.');
+    });
+
+    await speak(readback);
+  } finally {
+    state.isProcessing = false;
+    setOrbState('idle');
+  }
+}
+
+function endMeetingCleanup() {
+  state.mode = 'solo';
+  state.sessionNotes = [];
+  state.activeClient = null;
+  state.sessionId = null;
+  setMode('solo');
+  document.getElementById('meeting-client-hud').style.display = 'none';
+  document.getElementById('quick-cmds').style.display = 'flex';
+  document.getElementById('notes-box').style.display = 'none';
+  document.getElementById('summary-box').style.display = 'none';
+}
+
+// ── Briefing ───────────────────────────────────────────────────
+async function triggerBriefing() {
+  setOrbState('processing');
+  state.isProcessing = true;
+
+  try {
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+    const apptToday = state.appointments.filter(a => {
+      const d = new Date(a.date);
+      return d.toDateString() === new Date().toDateString();
+    });
+    const alerts = computeAlerts().slice(0, 3);
+    const tasks = state.clients.flatMap(c => (c.tasks || []).filter(t => !t.done)).slice(0, 5);
+
+    const context = {
+      date: today, broker: BROKER.name,
+      appointments_today: apptToday.map(a => ({ name: a.clientName, time: a.time, soa: a.soaCompleted })),
+      tasks_due: tasks.map(t => t.desc),
+      eligibility_alerts: alerts.map(a => a.msg),
+      total_clients: state.clients.length,
+    };
+
+    const script = await callClaude('claude-sonnet-4-6', 350,
+      `You are Sarah, voice AI assistant for ${BROKER.name} at D&D Insurance Group, Medicare broker in Oklahoma and Texas. Build a concise morning briefing. Speak directly to ${BROKER.name}. Natural flowing sentences, not bullet points. Under 200 words. End with "Ready to start?"`,
+      JSON.stringify(context)
+    );
+
+    showResponse(script);
+    await speak(script);
+  } finally {
+    state.isProcessing = false;
+    setOrbState('idle');
+  }
+}
+
+// ── Client briefing builder ────────────────────────────────────
+async function buildBriefing(client) {
+  const parts = [];
+  parts.push(`Here's your briefing on ${client.name}.`);
+  if (client.dob) { const age = Math.floor((Date.now() - new Date(client.dob)) / (365.25 * 24 * 60 * 60 * 1000)); parts.push(`Age ${age}.`); }
+  if (client.plan) parts.push(`Currently on ${client.plan}.`);
+  if (client.soaCompleted) parts.push('SOA completed.'); else parts.push('SOA not yet completed — confirm before presenting plans.');
+  if (client.notes) parts.push(`Notes: ${client.notes}`);
+  if (client.state === 'OK') parts.push('Licensed in Oklahoma — no birthday rule for Medigap.');
+  if (client.state === 'TX') parts.push('Licensed in Texas — no birthday rule for Medigap.');
+  return parts.join(' ');
+}
+
+// ── Plan Comparison ───────────────────────────────────────────
+function filterCompareClients(query) {
+  const list = document.getElementById('compare-client-list');
+  const filtered = query
+    ? state.clients.filter(c => c.name.toLowerCase().includes(query.toLowerCase()))
+    : state.clients;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:16px 0;font-family:var(--font-mono)">// no matching clients</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(c => {
+    const hasPlan = c.carrier || c.plan;
+    return `<div class="compare-card">
+      <div class="compare-client-hdr">
+        <div class="compare-client-name">${escHtml(c.name)}</div>
+        <button class="compare-run-btn" onclick="runComparison('${c.id}')">[ Analyze ]</button>
+      </div>
+      ${hasPlan ? `
+        <div class="current-plan-box">
+          <div class="current-plan-label">Current Plan</div>
+          <div class="current-plan-name">${escHtml(c.carrier||'')} ${escHtml(c.plan||'')}</div>
+          <div class="current-plan-details">
+            ${c.planType ? `<div class="plan-detail"><div class="plan-detail-label">Type</div><div class="plan-detail-val">${c.planType}</div></div>` : ''}
+            ${c.premium ? `<div class="plan-detail"><div class="plan-detail-label">Premium</div><div class="plan-detail-val">${escHtml(c.premium)}/mo</div></div>` : ''}
+            ${c.moop ? `<div class="plan-detail"><div class="plan-detail-label">MOOP</div><div class="plan-detail-val">${escHtml(c.moop)}</div></div>` : ''}
+            ${c.starRating ? `<div class="plan-detail"><div class="plan-detail-label">Stars</div><div class="plan-detail-val">★ ${c.starRating}</div></div>` : ''}
+          </div>
+        </div>` : `<div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);padding:6px 0">// No current plan on file — add plan details to client record for AI analysis</div>`}
+      ${c.drugs ? `<div style="font-size:10px;color:var(--text3);font-family:var(--font-mono)">// Rx: ${escHtml(c.drugs.substring(0,60))}${c.drugs.length>60?'...':''}</div>` : ''}
+      <div id="compare-result-${c.id}"></div>
+    </div>`;
+  }).join('');
+}
+
+async function runComparison(clientId) {
+  const c = state.clients.find(x => x.id === clientId);
+  if (!c) return;
+
+  const resultBox = document.getElementById(`compare-result-${clientId}`);
+  if (!resultBox) return;
+
+  resultBox.innerHTML = `<div class="compare-result-box" style="margin-top:8px"><div style="font-size:11px;color:var(--accent);font-family:var(--font-mono);animation:pulse 1s infinite">// Analyzing plan options for ${escHtml(c.name)}...</div></div>`;
+
+  const clientContext = {
+    name: c.name,
+    age: c.dob ? Math.floor((Date.now() - new Date(c.dob)) / (365.25*24*60*60*1000)) : 'unknown',
+    zip: c.zip || 'unknown',
+    state: c.state || 'unknown',
+    current_carrier: c.carrier || 'none',
+    current_plan: c.plan || 'none',
+    plan_type: c.planType || 'unknown',
+    monthly_premium: c.premium || 'unknown',
+    annual_moop: c.moop || 'unknown',
+    star_rating: c.starRating || 'unknown',
+    medications: c.drugs || 'none listed',
+    providers: c.providers || 'none listed',
+    notes: c.notes || '',
+    state_rules: c.state === 'OK' ? 'Oklahoma — no Medigap birthday rule. Guaranteed issue limited to initial OEP and federal SEPs.' : c.state === 'TX' ? 'Texas — no Medigap birthday rule. MA disenrollment SEP available.' : ''
+  };
+
+  try {
+    const analysis = await callClaude('claude-sonnet-4-6', 700,
+      `You are a Medicare plan analysis tool for Larry, a licensed broker at D&D Insurance Group in Oklahoma and Texas.
+Analyze this client's current Medicare coverage and identify potential gaps, savings opportunities, or better options.
+
+COMPLIANCE RULES — STRICTLY FOLLOW:
+- Present findings as DATA POINTS only, never as direct plan recommendations
+- Use phrases like "available plans in their zip show..." or "comparable coverage is available at..."
+- Never say "you should switch to X" or "I recommend X"
+- Larry (the broker) makes all recommendations — you only surface the data
+- Flag CMS-relevant issues: star rating drops (TX SEP trigger), IRMAA, creditable coverage, formulary gaps
+
+Return analysis in this JSON format:
+{
+  "summary": "2-sentence overall assessment",
+  "findings": [
+    {"icon": "💰", "text": "finding about premium/cost opportunity"},
+    {"icon": "💊", "text": "finding about drug coverage if drugs listed"},
+    {"icon": "⭐", "text": "finding about star rating"},
+    {"icon": "🏥", "text": "finding about network/provider coverage"},
+    {"icon": "📋", "text": "finding about plan type suitability"}
+  ],
+  "data_points": ["specific comparable data point 1", "specific comparable data point 2"],
+  "action_for_broker": "what the broker should discuss with the client",
+  "sunfire_note": "brief note on what to pull up in SunfireMatrix"
+}
+Only include findings where you have enough data to say something meaningful. Omit findings where data is missing.`,
+      JSON.stringify(clientContext)
+    );
+
+    let parsed;
+    try { parsed = JSON.parse(analysis); }
+    catch { parsed = { summary: analysis, findings: [], data_points: [], action_for_broker: '', sunfire_note: '' }; }
+
+    const findingsHtml = (parsed.findings || []).map(f =>
+      `<div class="compare-finding"><span class="finding-icon">${f.icon||'›'}</span><span>${escHtml(f.text)}</span></div>`
+    ).join('');
+
+    const dataPointsHtml = parsed.data_points?.length
+      ? `<div style="font-size:10px;color:var(--text3);font-family:var(--font-mono);line-height:1.8">${parsed.data_points.map(d=>`// ${escHtml(d)}`).join('<br>')}</div>`
+      : '';
+
+    const brokerNote = parsed.action_for_broker
+      ? `<div style="font-size:11px;color:var(--warn);font-family:var(--font-mono);padding:6px 8px;background:var(--warn-dim);border:1px solid rgba(255,176,32,0.2)">// For broker: ${escHtml(parsed.action_for_broker)}</div>`
+      : '';
+
+    resultBox.innerHTML = `<div class="compare-result-box" style="margin-top:8px">
+      <div style="font-size:12px;color:var(--text);line-height:1.7;margin-bottom:8px">${escHtml(parsed.summary||'')}</div>
+      ${findingsHtml}
+      ${dataPointsHtml}
+      ${brokerNote}
+      <div class="compare-disclaimer">
+        // Data presented for broker reference only. Larry makes all plan recommendations.<br>
+        // Open SunfireMatrix to view live plan options and enrollment.
+      </div>
+      <a href="${SUNFIRE_PURL}" target="_blank" class="compare-sf-btn" style="margin-top:4px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Open SunfireMatrix — ${escHtml(c.name)}
+      </a>
+    </div>`;
+
+    // Also speak top finding
+    if (parsed.findings?.[0]) {
+      await speak(`Analysis for ${c.name}: ${parsed.summary} ${parsed.action_for_broker || ''}`);
+    }
+
+  } catch(e) {
+    resultBox.innerHTML = `<div class="compare-result-box" style="margin-top:8px"><div style="font-size:11px;color:var(--danger);font-family:var(--font-mono)">// Analysis failed: ${escHtml(e.message)}</div></div>`;
+  }
+}
+
+// ── Eligibility alerts ─────────────────────────────────────────
+function computeAlerts() {
+  const alerts = [];
+  const today = new Date();
+  for (const c of state.clients) {
+    if (c.dob) {
+      const dob = new Date(c.dob);
+      const partBDate = new Date(dob); partBDate.setFullYear(dob.getFullYear() + 65);
+      const days = Math.round((partBDate - today) / (1000 * 60 * 60 * 24));
+      if ([90,60,30].includes(days)) alerts.push({ priority: days <= 30 ? 'high' : 'normal', msg: `${c.name} turns 65 in ${days} days — Initial Enrollment Window approaching.`, type: 'T65' });
+    }
+    const aepStart = new Date(today.getFullYear(), 9, 15);
+    const daysToAEP = Math.round((aepStart - today) / (1000 * 60 * 60 * 24));
+    if (daysToAEP > 0 && daysToAEP <= 30 && c.plan) {
+      alerts.push({ priority: 'normal', msg: `AEP starts in ${daysToAEP} days — review ${c.name}'s plan.`, type: 'AEP' });
+    }
+  }
+  return alerts;
+}
+
+function checkEligibility() {
+  state.alerts = computeAlerts();
+  renderAlerts();
+}
+
+// ── Claude API call ────────────────────────────────────────────
+async function callClaude(model, maxTokens, system, user) {
+  // Always try to reload from localStorage in case it was saved after page load
+  if (!state.anthropicKey) {
+    state.anthropicKey = load('anthro_key', '');
+  }
+  if (!state.anthropicKey) throw new Error('No API key configured. Go to ⚙ Config tab and paste your Anthropic key.');
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': state.anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  return data.content?.[0]?.text || '';
+}
+
+// ── TTS via Deepgram ───────────────────────────────────────────
+async function speak(text) {
+  if (!state.deepgramKey || !text) return;
+  try {
+    const voice = state.voice || load('voice', 'aura-2-thalia-en');
+    const resp = await fetch(`https://api.deepgram.com/v1/speak?model=${voice}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Token ${state.deepgramKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!resp.ok) return;
+    const buf = await resp.arrayBuffer();
+    const blob = new Blob([buf], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    await audio.play().catch(() => {});
+  } catch(e) {}
+}
+
+// ── Client management ──────────────────────────────────────────
+function findClient(name) {
+  if (!name) return null;
+  const n = name.toLowerCase();
+  return state.clients.find(c => c.name.toLowerCase().includes(n) || (c.email || '').toLowerCase().includes(n)) || null;
+}
+
+function saveClients() { save('clients', state.clients); renderClients(''); checkEligibility(); }
+
+function openAddClient() { document.getElementById('add-client-modal').style.display = 'flex'; }
+function closeAddClient() { document.getElementById('add-client-modal').style.display = 'none'; }
+
+function saveClient() {
+  const name = document.getElementById('mc-name').value.trim();
+  if (!name) { alert('Name is required'); return; }
+  const client = {
+    id: Date.now().toString(),
+    name,
+    email: document.getElementById('mc-email').value.trim(),
+    phone: document.getElementById('mc-phone').value.trim(),
+    plan: document.getElementById('mc-plan').value.trim(),
+    carrier: document.getElementById('mc-carrier').value.trim(),
+    planType: document.getElementById('mc-plan-type').value,
+    premium: document.getElementById('mc-premium').value.trim(),
+    moop: document.getElementById('mc-moop').value.trim(),
+    starRating: document.getElementById('mc-stars').value.trim(),
+    dob: document.getElementById('mc-dob').value.trim(),
+    zip: document.getElementById('mc-zip').value.trim(),
+    drugs: document.getElementById('mc-drugs').value.trim(),
+    providers: document.getElementById('mc-providers').value.trim(),
+    notes: document.getElementById('mc-notes').value.trim(),
+    state: document.getElementById('mc-state').value,
+    soaCompleted: false,
+    soaSentAt: null,
+    soaSignedAt: null,
+    soaDeliveryMethod: null,
+    soaHistory: [],
+    tasks: [],
+    addedAt: new Date().toISOString(),
+  };
+  state.clients.push(client);
+  saveClients();
+  closeAddClient();
+  showNotif(`${name} added`, 'success');
+  ['mc-name','mc-dob','mc-email','mc-phone','mc-zip','mc-carrier','mc-plan','mc-premium','mc-moop','mc-stars','mc-drugs','mc-providers','mc-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); document.getElementById('mc-plan-type').value = '';
+}
+
+function markSOASent(client) {
+  client.soaSentAt = new Date().toISOString();
+  saveClients();
+}
+
+function toggleSOA(id) {
+  const c = state.clients.find(x => x.id === id);
+  if (c) { c.soaCompleted = !c.soaCompleted; saveClients(); showNotif(`SOA ${c.soaCompleted ? 'marked complete' : 'marked pending'} for ${c.name}`, 'success'); }
+}
+
+// ── SOA Management ─────────────────────────────────────────────
+function sendSOA(clientId, method) {
+  const c = state.clients.find(x => x.id === clientId);
+  if (!c) return;
+  const now = new Date().toISOString();
+  c.soaSentAt = now;
+  c.soaDeliveryMethod = method;
+  c.soaCompleted = false;
+  c.soaSignedAt = null;
+  if (!c.soaHistory) c.soaHistory = [];
+  c.soaHistory.push({ action: 'sent', method, ts: now });
+  saveClients();
+  renderSOATracker();
+  showNotif(`SOA sent to ${c.name} via ${method}`, 'success');
+  // Also trigger voice confirmation
+  speak(`SOA sent to ${c.name} via ${method}. I've logged the send time.`);
+  // Open SparkAdvisor for actual sending
+  window.open('https://sparkadvisor.com', '_blank');
+}
+
+function markSOASigned(clientId) {
+  const c = state.clients.find(x => x.id === clientId);
+  if (!c) return;
+  const now = new Date().toISOString();
+  c.soaCompleted = true;
+  c.soaSignedAt = now;
+  if (!c.soaHistory) c.soaHistory = [];
+  c.soaHistory.push({ action: 'signed', ts: now });
+  saveClients();
+  renderSOATracker();
+  showNotif(`SOA marked signed for ${c.name}`, 'success');
+}
+
+function renderSOATracker() {
+  const list = document.getElementById('soa-list');
+  if (!list) return;
+
+  // Sort: unsigned first, then by send date
+  const sorted = [...state.clients].sort((a, b) => {
+    if (a.soaCompleted && !b.soaCompleted) return 1;
+    if (!a.soaCompleted && b.soaCompleted) return -1;
+    if (a.soaSentAt && !b.soaSentAt) return -1;
+    if (!a.soaSentAt && b.soaSentAt) return 1;
+    return 0;
+  });
+
+  if (sorted.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:20px 0;font-family:var(--font-mono)">// no clients — add clients to track SOA status</div>';
+    return;
+  }
+
+  list.innerHTML = sorted.map(c => {
+    const statusClass = c.soaCompleted ? 'soa-signed' : c.soaSentAt ? 'soa-sent' : 'soa-unsent';
+    const badge = c.soaCompleted
+      ? `<span class="soa-badge soa-badge-signed">✓ Signed</span>`
+      : c.soaSentAt
+        ? `<span class="soa-badge soa-badge-sent">⏳ Awaiting Signature</span>`
+        : `<span class="soa-badge soa-badge-unsent">Not Sent</span>`;
+
+    const signedDate = c.soaSignedAt ? `<span class="soa-timestamp">Signed: ${new Date(c.soaSignedAt).toLocaleDateString()}</span>` : '';
+    const sentDate = c.soaSentAt ? `<span class="soa-timestamp">Sent ${c.soaDeliveryMethod ? 'via ' + c.soaDeliveryMethod : ''}: ${new Date(c.soaSentAt).toLocaleDateString()}</span>` : '';
+
+    // Check if SOA is expiring (within 30 days of 12-month mark)
+    let expiryWarning = '';
+    if (c.soaSignedAt) {
+      const signedDate = new Date(c.soaSignedAt);
+      const expiryDate = new Date(signedDate);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      const daysToExpiry = Math.round((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+      if (daysToExpiry <= 30 && daysToExpiry > 0) {
+        expiryWarning = `<span class="soa-badge" style="color:var(--danger);border-color:rgba(255,56,96,0.35);background:var(--danger-dim)">⚠ Expires in ${daysToExpiry} days</span>`;
+      } else if (daysToExpiry <= 0) {
+        expiryWarning = `<span class="soa-badge" style="color:var(--danger);border-color:rgba(255,56,96,0.35);background:var(--danger-dim)">⚠ EXPIRED</span>`;
+      }
+    }
+
+    const history = (c.soaHistory || []).slice(-3).reverse().map(h =>
+      `[${new Date(h.ts).toLocaleDateString()}] ${h.action} ${h.method ? 'via ' + h.method : ''}`
+    ).join('<br>');
+
+    const actions = c.soaCompleted
+      ? `<button class="soa-btn" onclick="sendSOA('${c.id}','text')">Resend Text</button>
+         <button class="soa-btn" onclick="sendSOA('${c.id}','email')">Resend Email</button>`
+      : c.soaSentAt
+        ? `<button class="soa-btn primary" onclick="markSOASigned('${c.id}')">Mark Signed ✓</button>
+           <button class="soa-btn" onclick="sendSOA('${c.id}','text')">Resend Text</button>
+           <button class="soa-btn" onclick="sendSOA('${c.id}','email')">Resend Email</button>`
+        : `<button class="soa-btn primary" onclick="sendSOA('${c.id}','text')">Send via Text</button>
+           <button class="soa-btn primary" onclick="sendSOA('${c.id}','email')">Send via Email</button>`;
+
+    return `<div class="soa-card ${statusClass}">
+      <div class="soa-client-name">${escHtml(c.name)}</div>
+      <div class="soa-status-row">${badge}${signedDate}${sentDate}${expiryWarning}</div>
+      ${c.carrier || c.plan ? `<div style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">${escHtml(c.carrier||'')} ${escHtml(c.plan||'')} ${c.planType ? '// '+c.planType : ''}</div>` : ''}
+      <div class="soa-actions">${actions}</div>
+      ${history ? `<div class="soa-history">// history<br>${history}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function deleteClient(id) {
+  if (!confirm('Remove this client from local storage?')) return;
+  state.clients = state.clients.filter(c => c.id !== id);
+  saveClients();
+}
+
+// ── Appointment management ─────────────────────────────────────
+function renderAppointments() {
+  const list = document.getElementById('appt-list');
+  const now = new Date();
+  const upcoming = state.appointments.filter(a => new Date(a.date) >= now).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  if (upcoming.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:20px 0;font-family:var(--font-mono);letter-spacing:0.5px">// no appointments scheduled<br>// connect Manus booking site to sync</div>';
+    return;
+  }
+
+  list.innerHTML = upcoming.map(a => {
+    const dt = new Date(a.date);
+    const isNew = !state.clients.find(c => c.name.toLowerCase() === a.clientName?.toLowerCase());
+    const soaClass = a.soaCompleted ? 'soa-complete' : 'soa-pending';
+    return `<div class="appt-card ${isNew ? 'new-client' : soaClass}">
+      <div class="appt-time">${dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})}</div>
+      <div class="appt-name">${isNew ? '<span class="new-badge">NEW</span>' : ''}${escHtml(a.clientName || 'Unknown')}</div>
+      <div class="soa-status ${a.soaCompleted ? 'soa-ok' : 'soa-no'}">
+        ${a.soaCompleted ? '// SOA complete' : '// SOA pending'}
+      </div>
+      ${a.tags?.length ? `<div class="appt-tags">${a.tags.map(t=>`<span class="appt-tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
+      <button class="brief-btn" onclick="processCommand('Brief me on ${escHtml(a.clientName || '')}')">Brief →</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Render clients ─────────────────────────────────────────────
+function renderClients(query) {
+  const list = document.getElementById('client-list');
+  const filtered = query ? state.clients.filter(c => c.name.toLowerCase().includes(query.toLowerCase()) || (c.email||'').toLowerCase().includes(query.toLowerCase())) : state.clients;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="font-size:11px;color:var(--text3);text-align:center;padding:20px 0;font-family:var(--font-mono)">${state.clients.length === 0 ? '// no client records found<br>// add one with the [Add] button' : '// no matching records'}</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(c => `
+    <div class="client-card">
+      <div class="client-name-row">
+        <span>${escHtml(c.name)}</span>
+        <span class="client-state-badge">${c.state||''}</span>
+      </div>
+      ${c.plan ? `<div class="client-plan">// ${escHtml(c.plan)}</div>` : ''}
+      ${c.email ? `<div class="client-email-txt">${escHtml(c.email)}</div>` : ''}
+      <div class="client-soa-row">
+        SOA: ${c.soaCompleted ? '<span style="color:var(--success)">complete</span>' : c.soaSentAt ? '<span style="color:var(--warn)">sent · awaiting</span>' : '<span style="color:var(--text3)">not sent</span>'}
+        ${c.tasks?.length ? ` // ${c.tasks.length} task${c.tasks.length>1?'s':''}` : ''}
+      </div>
+      <div class="client-actions">
+        <button class="client-btn" onclick="processCommand('Brief me on ${escHtml(c.name)}')">brief</button>
+        <button class="client-btn" onclick="processCommand('Start meeting with ${escHtml(c.name)}')">meeting</button>
+        <button class="client-btn" onclick="toggleSOA('${c.id}')">${c.soaCompleted ? 'undo_soa' : 'soa_done'}</button>
+        <button class="client-btn danger" onclick="deleteClient('${c.id}')">remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Render alerts ──────────────────────────────────────────────
+function renderAlerts() {
+  const list = document.getElementById('alert-list');
+  if (state.alerts.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text3);text-align:center;padding:20px 0;font-family:var(--font-mono)">// no active alerts<br>// add clients with DOB to enable T65 + AEP tracking</div>';
+    return;
+  }
+  list.innerHTML = state.alerts.map(a => `
+    <div class="alert-card alert-${a.priority}">
+      <div class="alert-type">${escHtml(a.type)}</div>
+      <div class="alert-msg">${escHtml(a.msg)}</div>
+    </div>
+  `).join('');
+}
+
+// ── Pending approval ───────────────────────────────────────────
+function setPending(text, fn) {
+  state.pendingAction = fn;
+  document.getElementById('pending-text').textContent = text;
+  document.getElementById('pending-box').style.display = 'flex';
+  document.getElementById('response-box').style.display = 'none';
+}
+
+function approvePending() {
+  if (state.pendingAction) { state.pendingAction(); state.pendingAction = null; }
+  hidePending();
+}
+
+function cancelPending() {
+  state.pendingAction = null;
+  hidePending();
+  showResponse('Cancelled.');
+}
+
+function hidePending() { document.getElementById('pending-box').style.display = 'none'; }
+
+// ── UI helpers ─────────────────────────────────────────────────
+function setOrbState(s) {
+  const center = document.getElementById('orb-center');
+  const icon = document.getElementById('orb-icon');
+  const hint = document.getElementById('orb-hint');
+
+  // Update particle orb state
+  if (window.orbParticles) window.orbParticles.setState(s);
+
+  // Update center glow
+  center.className = 'orb-center' + (s === 'listening' ? ' listening' : s === 'processing' ? ' processing' : '');
+
+  if (s === 'listening') {
+    icon.setAttribute('stroke', 'rgba(232,24,42,0.95)');
+    icon.style.animation = '';
+    hint.textContent = 'TRANSMITTING · RELEASE TO PROCESS';
+  } else if (s === 'processing') {
+    icon.setAttribute('stroke', 'rgba(110,140,255,0.95)');
+    icon.style.animation = 'spin 1s linear infinite';
+    hint.textContent = 'PROCESSING...';
+  } else {
+    icon.setAttribute('stroke', 'rgba(74,108,247,0.85)');
+    icon.style.animation = '';
+    hint.textContent = state.mode === 'meeting' ? 'PUSH-TO-TALK · SARAH LISTENING' : 'HOLD TO SPEAK WITH SARAH · SPACE';
+  }
+}
+
+function setMode(m) {
+  state.mode = m;
+  const pill = document.getElementById('mode-pill');
+  pill.className = 'mode-pill mode-' + m;
+  pill.textContent = m === 'solo' ? '● Solo' : m === 'meeting' ? '● In Meeting' : '● Review';
+  setOrbState('idle');
+}
+
+function showTranscript(t) {
+  document.getElementById('transcript-text').textContent = `"${t}"`;
+  document.getElementById('transcript-box').style.display = 'flex';
+}
+
+function showResponse(text) {
+  const box = document.getElementById('response-box');
+  box.innerHTML = escHtml(text).replace(/\n/g, '<br>');
+  box.style.display = 'block';
+  hidePending();
+}
+
+function hideResponse() {
+  document.getElementById('response-box').style.display = 'none';
+  document.getElementById('transcript-box').style.display = 'none';
+}
+
+function showNotif(msg, type = 'success') {
+  const bar = document.getElementById('notif-bar');
+  bar.style.display = 'flex';
+  const chip = document.createElement('div');
+  chip.className = `notif-chip notif-${type}`;
+  chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">${type === 'success' ? '<polyline points="20 6 9 17 4 12"/>' : type === 'error' ? '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>' : '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'}  </svg>${escHtml(msg)}`;
+  bar.prepend(chip);
+  setTimeout(() => { chip.remove(); if (!bar.children.length) bar.style.display = 'none'; }, 5000);
+}
+
+function dispColor(d) {
+  return d === 'enrolled' ? 'var(--accent)' : d === 'declined' ? 'var(--danger)' : d === 'follow_up' ? 'var(--warn)' : 'var(--text-sub)';
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Voice preview ─────────────────────────────────────────────
+async function previewVoice() {
+  const voiceSel = document.getElementById('settings-voice');
+  const voice = voiceSel ? voiceSel.value : (state.voice || 'aura-2-thalia-en');
+  const voiceName = voiceSel ? voiceSel.options[voiceSel.selectedIndex].text.split(' —')[0] : voice;
+  if (!state.deepgramKey) { showNotif('Add Deepgram key first', 'warn'); return; }
+  showNotif(`Previewing ${voiceName}...`, 'success');
+  const previewText = `Hello Larry, this is ${voiceName}. I'm Sarah, your D&D Insurance Group Medicare AI assistant, ready to assist with client briefings, meeting notes, and enrollment support.`;
+  try {
+    const resp = await fetch(`https://api.deepgram.com/v1/speak?model=${voice}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Token ${state.deepgramKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: previewText })
+    });
+    if (!resp.ok) { showNotif('Preview failed — check Deepgram key', 'error'); return; }
+    const buf = await resp.arrayBuffer();
+    const blob = new Blob([buf], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    await audio.play().catch(() => showNotif('Allow audio in browser settings', 'warn'));
+  } catch(e) { showNotif('Preview error: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PARTICLE WAVE ORB ENGINE
+// ═══════════════════════════════════════════════════════════════
+(function initParticleOrb() {
+  const PARTICLE_COUNT = 120;
+  const BASE_RADIUS = 88;
+  const WAVE_LAYERS = 3;
+
+  let canvas, ctx, W, H, cx, cy;
+  let orbState = 'idle'; // idle | listening | processing
+  let animFrame;
+  let tick = 0;
+
+  const particles = [];
+
+  function Particle(index, layer) {
+    this.index = index;
+    this.layer = layer;
+    this.baseAngle = (index / PARTICLE_COUNT) * Math.PI * 2;
+    this.speed = 0.002 + Math.random() * 0.002;
+    this.angleOffset = Math.random() * Math.PI * 2;
+    this.waveAmp = 6 + Math.random() * 10;
+    this.waveFreq = 1.5 + Math.random() * 2;
+    this.wavePhase = Math.random() * Math.PI * 2;
+    this.size = 1 + Math.random() * 1.5;
+    this.opacity = 0.4 + Math.random() * 0.6;
+    this.layerRadius = BASE_RADIUS + (layer - 1) * 12;
+  }
+
+  Particle.prototype.getPos = function(t) {
+    const angle = this.baseAngle + t * this.speed * (this.layer % 2 === 0 ? -1 : 1);
+    // Wave distortion around the ring
+    const wave = Math.sin(angle * this.waveFreq + t * 0.04 + this.wavePhase);
+    const wave2 = Math.cos(angle * (this.waveFreq * 0.7) + t * 0.03 + this.wavePhase * 1.3);
+
+    let amp = this.waveAmp;
+    let opacity = this.opacity;
+    let size = this.size;
+
+    if (orbState === 'listening') {
+      amp = this.waveAmp * (2.2 + Math.sin(t * 0.08) * 0.8);
+      opacity = Math.min(1, this.opacity * 1.4);
+      size = this.size * 1.3;
+    } else if (orbState === 'processing') {
+      amp = this.waveAmp * (1.4 + Math.sin(t * 0.12 + this.index * 0.1) * 0.6);
+      opacity = Math.min(1, this.opacity * 1.2);
+      size = this.size * 1.1;
+    }
+
+    const r = this.layerRadius + wave * amp + wave2 * (amp * 0.4);
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+
+    return { x, y, opacity, size };
+  };
+
+  function getColors() {
+    if (orbState === 'listening') {
+      return ['rgba(232,24,42,', 'rgba(200,20,36,', 'rgba(255,80,95,'];
+    } else if (orbState === 'processing') {
+      return ['rgba(74,108,247,', 'rgba(110,140,255,', 'rgba(150,180,255,'];
+    }
+    return ['rgba(74,108,247,', 'rgba(26,36,117,', 'rgba(110,140,255,'];
+  }
+
+  function drawGlow() {
+    // Inner glow
+    const glowColor = orbState === 'listening'
+      ? 'rgba(232,24,42,' : orbState === 'processing'
+      ? 'rgba(74,108,247,' : 'rgba(26,36,117,';
+    const glowIntensity = orbState === 'listening' ? 0.06 + Math.sin(tick * 0.08) * 0.02
+      : orbState === 'processing' ? 0.05 + Math.sin(tick * 0.1) * 0.02
+      : 0.03 + Math.sin(tick * 0.04) * 0.01;
+    const glowRadius = orbState === 'listening' ? BASE_RADIUS * 1.2 : BASE_RADIUS * 0.9;
+
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
+    grad.addColorStop(0, glowColor + (glowIntensity * 2) + ')');
+    grad.addColorStop(0.5, glowColor + glowIntensity + ')');
+    grad.addColorStop(1, glowColor + '0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawConnections() {
+    // Draw faint lines between nearby particles for a mesh effect
+    const threshold = orbState === 'listening' ? 22 : 16;
+    for (let i = 0; i < particles.length; i += 3) {
+      const a = particles[i].getPos(tick);
+      for (let j = i + 1; j < Math.min(i + 8, particles.length); j++) {
+        const b = particles[j].getPos(tick);
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (dist < threshold) {
+          const alpha = (1 - dist / threshold) * 0.12;
+          const colors = getColors();
+          ctx.strokeStyle = colors[0] + alpha + ')';
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    tick++;
+
+    drawGlow();
+    drawConnections();
+
+    const colors = getColors();
+
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      const pos = p.getPos(tick);
+      const color = colors[p.layer - 1] || colors[0];
+
+      // Particle glow
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = color + '0.8)';
+
+      ctx.globalAlpha = pos.opacity;
+      ctx.fillStyle = color + '1)';
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, pos.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+
+    // Outer faint ring
+    const ringOpacity = orbState === 'idle' ? 0.08 : orbState === 'listening' ? 0.2 + Math.sin(tick * 0.06) * 0.1 : 0.15;
+    ctx.strokeStyle = colors[0] + ringOpacity + ')';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, BASE_RADIUS + 28, 0, Math.PI * 2);
+    ctx.stroke();
+
+    animFrame = requestAnimationFrame(frame);
+  }
+
+  function init() {
+    canvas = document.getElementById('orb-canvas');
+    if (!canvas) { setTimeout(init, 100); return; }
+    ctx = canvas.getContext('2d');
+    W = canvas.width;
+    H = canvas.height;
+    cx = W / 2;
+    cy = H / 2;
+
+    particles.length = 0;
+    for (let layer = 1; layer <= WAVE_LAYERS; layer++) {
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push(new Particle(i, layer));
+      }
+    }
+
+    if (animFrame) cancelAnimationFrame(animFrame);
+    frame();
+  }
+
+  window.orbParticles = {
+    setState: function(s) { orbState = s; },
+    reinit: init,
+  };
+
+  // Init after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    setTimeout(init, 50);
+  }
+})();
+
+// ── Desktop overlay panel ─────────────────────────────────────
+function showOverlay(panel) {
+  const overlay = document.getElementById('desktop-overlay');
+  const title = document.getElementById('overlay-title');
+  const contentEl = document.getElementById('overlay-content');
+  const tabs = document.querySelectorAll('.dbn-tab');
+
+  // Update active tab
+  tabs.forEach(t => t.classList.remove('active'));
+  const labels = { soa: '📋 SOA Tracker', compare: '📊 Compare Plans', alerts: '⚡ Alerts', clients: '👤 Clients' };
+  tabs.forEach(t => { if(t.textContent.trim() === labels[panel]) t.classList.add('active'); });
+
+  title.textContent = labels[panel] || panel;
+
+  // Clone panel content into overlay
+  const sourcePanel = document.getElementById('panel-' + panel);
+  if (sourcePanel) {
+    contentEl.innerHTML = sourcePanel.innerHTML;
+    // Re-run renders into overlay content
+    if (panel === 'soa') renderSOATrackerIn(contentEl);
+    if (panel === 'compare') renderCompareIn(contentEl);
+    if (panel === 'alerts') renderAlertsIn(contentEl);
+    if (panel === 'clients') renderClientsIn(contentEl, '');
+  }
+
+  overlay.style.display = 'block';
+}
+
+function closeOverlay() {
+  document.getElementById('desktop-overlay').style.display = 'none';
+  document.querySelectorAll('.dbn-tab').forEach(t => t.classList.remove('active'));
+}
+
+// Render variants that write into a given container element
+function renderSOATrackerIn(container) {
+  const list = container.querySelector('#soa-list') || container;
+  // Reuse renderSOATracker but target the overlay list
+  const saved = document.getElementById('soa-list');
+  if (!saved) return;
+  list.innerHTML = '';
+  // Re-trigger by temporarily swapping
+  const realList = document.getElementById('soa-list');
+  const overlay_list = list;
+  renderSOATracker();
+  overlay_list.innerHTML = realList.innerHTML;
+}
+function renderCompareIn(container) {
+  const list = container.querySelector('#compare-client-list');
+  if (list) { filterCompareClients(''); list.innerHTML = document.getElementById('compare-client-list')?.innerHTML || ''; }
+}
+function renderAlertsIn(container) {
+  const list = container.querySelector('#alert-list');
+  if (list) { renderAlerts(); list.innerHTML = document.getElementById('alert-list')?.innerHTML || ''; }
+}
+function renderClientsIn(container, query) {
+  const list = container.querySelector('#client-list');
+  if (list) { renderClients(query); list.innerHTML = document.getElementById('client-list')?.innerHTML || ''; }
+}
+
+// ── Hey Sarah Wake Word ────────────────────────────────────────
+let wakeWordActive = false;
+let wakeRecognition = null;
+
+function initWakeWord() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.log('[Wake] Speech Recognition not supported in this browser');
+    return;
+  }
+
+  wakeRecognition = new SpeechRecognition();
+  wakeRecognition.continuous = true;
+  wakeRecognition.interimResults = true;
+  wakeRecognition.lang = 'en-US';
+
+  wakeRecognition.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript.toLowerCase().trim();
+
+      // Detect "hey sarah" trigger
+      if (transcript.includes('hey sarah') || transcript.includes('hey, sarah') || transcript.includes('hi sarah')) {
+        if (!state.isListening && !state.isProcessing) {
+          // Check key first — give friendly message if missing
+          if (!state.anthropicKey) {
+            showNotif('Add your Anthropic API key in ⚙ Config to activate Sarah', 'warn');
+            showResponse("Hi! I heard you say Hey Sarah. To activate me, go to ⚙ Config and add your Anthropic API key.");
+            break;
+          }
+
+          // Brief visual flash on orb
+          setOrbState('listening');
+          setTimeout(() => {
+            if (!state.isListening) setOrbState('idle');
+          }, 300);
+
+          // If no Deepgram key, use text input mode instead
+          if (!state.deepgramKey) {
+            showNotif('Hey Sarah — tap the text box to type your question', 'success');
+            setTimeout(() => {
+              setOrbState('idle');
+              document.getElementById('text-cmd').focus();
+            }, 600);
+            break;
+          }
+
+          // Start full Deepgram STT capture after brief pause
+          setTimeout(() => {
+            if (!state.isListening && !state.isProcessing) {
+              showNotif('Hey Sarah — listening...', 'success');
+              startListen();
+              // Auto-stop after 6 seconds if not released
+              setTimeout(() => { if (state.isListening) stopListen(); }, 6000);
+            }
+          }, 400);
+          break;
+        }
+      }
+    }
+  };
+
+  wakeRecognition.onerror = (e) => {
+    if (e.error === 'not-allowed') {
+      updateWakeStatus(false);
+    }
+  };
+
+  wakeRecognition.onend = () => {
+    // Auto-restart if still active
+    if (wakeWordActive && state.mode !== 'meeting') {
+      try { wakeRecognition.start(); } catch(e) {}
+    }
+  };
+
+  // Start wake word after a short delay
+  setTimeout(() => enableWakeWord(), 1500);
+}
+
+function enableWakeWord() {
+  if (!wakeRecognition) return;
+  try {
+    wakeRecognition.start();
+    wakeWordActive = true;
+    updateWakeStatus(true);
+    console.log('[Wake] "Hey Sarah" active');
+  } catch(e) {
+    console.warn('[Wake] Could not start:', e.message);
+  }
+}
+
+function disableWakeWord() {
+  if (!wakeRecognition) return;
+  wakeWordActive = false;
+  try { wakeRecognition.stop(); } catch(e) {}
+  updateWakeStatus(false);
+}
+
+function updateWakeStatus(active) {
+  const dot = document.getElementById('wake-dot');
+  const label = document.getElementById('wake-label');
+  if (!dot || !label) return;
+  dot.style.background = active ? '#22c993' : 'var(--text3)';
+  dot.style.boxShadow = active ? '0 0 6px rgba(34,201,147,0.5)' : 'none';
+  label.textContent = active ? 'Hey Sarah: active' : 'Wake word: off';
+  label.style.color = active ? '#22c993' : 'var(--text3)';
+}
+
+// Pause wake word during meetings (avoid accidental triggers)
+const _origStartMeeting = startMeeting;
+function startMeeting(client) {
+  disableWakeWord();
+  _origStartMeeting(client);
+}
+const _origEndMeetingCleanup = endMeetingCleanup;
+function endMeetingCleanup() {
+  _origEndMeetingCleanup();
+  setTimeout(enableWakeWord, 1000);
+}
+
+// ── Download app as file ───────────────────────────────────────
+function downloadApp() {
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'DDI-Medicare-Agent.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showNotif('App downloaded — open the file in any browser', 'success');
+}
+// ── Backend connection (Railway) ───────────────────────────────
+function connectBackend() {
+  // Check backend health
+  fetch(`${BACKEND}/health`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        showNotif('Backend connected ✓', 'success');
+        fetchBackendAppointments();
+      }
+    })
+    .catch(() => {
+      console.warn('[Backend] Not reachable — running in local mode');
+    });
+
+  // Connect Socket.IO for real-time updates
+  try {
+    if (typeof io !== 'undefined') {
+      const socket = io(BACKEND, { transports: ['websocket', 'polling'] });
+
+      socket.on('connect', () => {
+        console.log('[Socket] Connected to backend');
+      });
+
+      socket.on('new_booking', (data) => {
+        showNotif(`New booking: ${data.name} — ${new Date(data.appointment_date).toLocaleDateString()}`, 'success');
+        fetchBackendAppointments();
+      });
+
+      socket.on('soa_completed', (data) => {
+        showNotif(`SOA completed by client`, 'success');
+        fetchBackendAppointments();
+      });
+
+      socket.on('morning_briefing', (data) => {
+        if (data.script) {
+          showResponse(data.script);
+          if (data.audio) {
+            const binary = atob(data.audio);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.onended = () => URL.revokeObjectURL(url);
+            audio.play().catch(() => {});
+          }
+        }
+      });
+
+      socket.on('crm_synced', (data) => {
+        showNotif(`Notes saved to SparkAdvisor for ${data.client_name || 'client'}`, 'success');
+      });
+
+      socket.on('enrollment_confirmed', (data) => {
+        showNotif('Enrollment confirmed — tasks created in SparkAdvisor', 'success');
+      });
+
+      socket.on('disconnect', () => {
+        console.log('[Socket] Disconnected from backend');
+      });
+    }
+  } catch(e) {
+    console.warn('[Socket] Could not connect:', e.message);
+  }
+}
+
+// Fetch appointments from Railway backend
+async function fetchBackendAppointments() {
+  try {
+    const r = await fetch(`${BACKEND}/api/appointments?days=7`);
+    const data = await r.json();
+    if (data && data.length > 0) {
+      // Merge backend appointments with local ones
+      const backendAppts = data.map(a => ({
+        clientName: a.client_name,
+        date: a.appointment_dt,
+        time: new Date(a.appointment_dt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }),
+        soaCompleted: a.soa_completed,
+        tags: a.parsed_tags?.tags || [],
+        source: 'backend',
+      }));
+      // Add to state without duplicating
+      const existing = new Set(state.appointments.map(a => a.clientName + a.date));
+      const newAppts = backendAppts.filter(a => !existing.has(a.clientName + a.date));
+      state.appointments = [...state.appointments, ...newAppts];
+      save('appointments', state.appointments);
+      renderAppointments();
+    }
+  } catch(e) {
+    console.warn('[Backend] Appointments fetch failed:', e.message);
+  }
+}
+
+// Trigger briefing — tries backend first, falls back to local
+async function runBriefing() {
+  try {
+    const r = await fetch(`${BACKEND}/health`, { signal: AbortSignal.timeout(3000) });
+    const health = await r.json();
+    if (health.status === 'ok') {
+      await fetch(`${BACKEND}/api/briefing/trigger`, { method: 'POST' });
+      showNotif('Morning briefing building…', 'success');
+      return;
+    }
+  } catch(e) {}
+  await triggerBriefing();
+}
+</script>
+</body>
+</html>
