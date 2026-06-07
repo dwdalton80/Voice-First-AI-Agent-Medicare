@@ -813,15 +813,17 @@ function load(key, def) { try { const v = localStorage.getItem('ddi_' + key); re
 
 // ── Boot ───────────────────────────────────────────────────────
 function startApp() {
-  var key = document.getElementById('setup-key').value.trim();
+  var raw = document.getElementById('setup-key').value;
+  var key = raw.replace(/[\s"'`]/g, '');  // strip all whitespace and quotes
   if (!key) {
     document.getElementById('setup-key').style.border = '2px solid red';
     return;
   }
+  var dg = document.getElementById('setup-dg').value.replace(/[\s"'`]/g, '');
   state.anthropicKey = key;
-  state.deepgramKey = document.getElementById('setup-dg').value.trim();
-  localStorage.setItem('ddi_anthro_key', JSON.stringify(key));
-  localStorage.setItem('ddi_dg_key', JSON.stringify(state.deepgramKey));
+  state.deepgramKey = dg;
+  save('anthro_key', key);
+  save('dg_key', dg);
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   document.getElementById('settings-key').value = key;
@@ -870,8 +872,8 @@ function launch() {
 window.addEventListener('load', launch);
 
 function saveSettings() {
-  state.anthropicKey = document.getElementById('settings-key').value.trim();
-  state.deepgramKey = document.getElementById('settings-dg').value.trim();
+  state.anthropicKey = document.getElementById('settings-key').value.replace(/[\s"'`]/g, '');
+  state.deepgramKey = document.getElementById('settings-dg').value.replace(/[\s"'`]/g, '');
   const voiceSel = document.getElementById('settings-voice');
   if (voiceSel) state.voice = voiceSel.value;
   save('anthro_key', state.anthropicKey);
@@ -1531,13 +1533,16 @@ async function callClaude(model, maxTokens, system, user) {
   if (!state.anthropicKey) {
     state.anthropicKey = load('anthro_key', '');
   }
-  if (!state.anthropicKey) throw new Error('No API key configured. Go to ⚙ Config tab and paste your Anthropic key.');
+  var cleanKey = (state.anthropicKey || '').replace(/[\s"'`]/g, '');
+  if (!cleanKey) throw new Error('No API key configured. Go to Config tab.');
+  // Debug: log key prefix/suffix to console (safe — not the full key)
+  console.log('[Claude] Using key:', cleanKey.substring(0, 8) + '...' + cleanKey.slice(-4), 'length:', cleanKey.length);
 
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': state.anthropicKey,
+      'x-api-key': cleanKey,
       'anthropic-version': '2023-06-01',
       'anthropic-dangerous-direct-browser-access': 'true',
     },
