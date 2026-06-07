@@ -1312,39 +1312,48 @@ function endMeetingCleanup() {
 
 // ── Briefing ───────────────────────────────────────────────────
 async function triggerBriefing() {
+  if (!state.anthropicKey) { state.anthropicKey = load('anthro_key', ''); }
+  if (!state.anthropicKey) {
+    showResponse("Please add your Anthropic API key in the Config tab first.");
+    return;
+  }
+
   setOrbState('processing');
   state.isProcessing = true;
+  showResponse("Sarah is building your morning briefing...");
 
   try {
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
-    const apptToday = state.appointments.filter(a => {
-      const d = new Date(a.date);
-      return d.toDateString() === new Date().toDateString();
+    var today = new Date().toLocaleDateString('en-US', {weekday:'long',month:'long',day:'numeric',timeZone:'America/Chicago'});
+    var apptToday = state.appointments.filter(function(a){ return new Date(a.date).toDateString() === new Date().toDateString(); });
+    var alerts = computeAlerts().slice(0, 3);
+    var tasks = state.clients.reduce(function(acc, c){ return acc.concat((c.tasks||[]).filter(function(t){return !t.done;})); }, []).slice(0, 5);
+
+    var context = JSON.stringify({
+      date: today,
+      broker: BROKER.name,
+      appointments_today: apptToday.map(function(a){ return {name: a.clientName, time: a.time, soa: a.soaCompleted}; }),
+      tasks_due: tasks.map(function(t){ return t.desc; }),
+      eligibility_alerts: alerts.map(function(a){ return a.msg; }),
+      total_clients: state.clients.length
     });
-    const alerts = computeAlerts().slice(0, 3);
-    const tasks = state.clients.flatMap(c => (c.tasks || []).filter(t => !t.done)).slice(0, 5);
 
-    const context = {
-      date: today, broker: BROKER.name,
-      appointments_today: apptToday.map(a => ({ name: a.clientName, time: a.time, soa: a.soaCompleted })),
-      tasks_due: tasks.map(t => t.desc),
-      eligibility_alerts: alerts.map(a => a.msg),
-      total_clients: state.clients.length,
-    };
-
-    const script = await callClaude('claude-sonnet-4-6', 350,
-      `You are Sarah, voice AI assistant for ${BROKER.name} at D&D Insurance Group, Medicare broker in Oklahoma and Texas. Build a concise morning briefing. Speak directly to ${BROKER.name}. Natural flowing sentences, not bullet points. Under 200 words. End with "Ready to start?"`,
-      JSON.stringify(context)
+    var script = await callClaude(
+      'claude-haiku-4-5', 400,
+      'You are Sarah, a Medicare AI assistant for ' + BROKER.name + ' at D&D Insurance Group in Oklahoma and Texas. Give a concise morning briefing in 3-5 natural sentences. End with: Ready to start?',
+      context
     );
 
     showResponse(script);
     await speak(script);
+
+  } catch(e) {
+    showResponse("Briefing error: " + e.message + " — Check your API key in Config.");
+    showNotif('Briefing failed', 'error');
   } finally {
     state.isProcessing = false;
     setOrbState('idle');
   }
 }
-
 // ── Client briefing builder ────────────────────────────────────
 async function buildBriefing(client) {
   const parts = [];
@@ -2384,11 +2393,9 @@ async function fetchBackendAppointments() {
 // Trigger briefing — always runs locally in browser for instant response
 // Also pings backend in background to update logs
 async function runBriefing() {
-  // Always run local briefing immediately — no waiting on backend
+  showNotif('Building morning briefing...', 'success');
   await triggerBriefing();
-
-  // Notify backend in background (non-blocking, for logging only)
-  fetch(`${BACKEND}/api/briefing/trigger`, { method: 'POST' }).catch(() => {});
+  fetch(BACKEND + '/api/briefing/trigger', { method: 'POST' }).catch(() => {});
 }
 </script>
 </body>
