@@ -1,18 +1,36 @@
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+let pool = null;
 
-pool.on('error', (err) => {
-  console.error('Unexpected PostgreSQL error:', err);
-});
+function getPool() {
+  if (!pool && process.env.DATABASE_URL) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+    pool.on('error', (err) => {
+      console.error('[DB] Unexpected PostgreSQL error:', err.message);
+    });
+  }
+  return pool;
+}
 
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-  pool,
-};
+// Graceful query — returns empty result if DB not configured
+async function query(text, params) {
+  const p = getPool();
+  if (!p) {
+    console.warn('[DB] No DATABASE_URL configured — skipping query:', text.substring(0, 60));
+    return { rows: [], rowCount: 0 };
+  }
+  try {
+    return await p.query(text, params);
+  } catch (e) {
+    console.error('[DB] Query error:', e.message, '|', text.substring(0, 80));
+    return { rows: [], rowCount: 0 };
+  }
+}
+
+module.exports = { query, getPool };
