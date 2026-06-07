@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DDI Medicare Agent — Larry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080a0d;
+    --surface: #0d1018;
+    --surface2: #121720;
+    --border: #1c2333;
+    --accent: #00e5b0;
+    --accent-dim: rgba(0,229,176,0.1);
+    --accent-glow: rgba(0,229,176,0.25);
+    --warn: #ffb020;
+    --warn-dim: rgba(255,176,32,0.1);
+    --danger: #ff4757;
+    --danger-dim: rgba(255,71,87,0.1);
+    --text: #e2e8f0;
+    --text-sub: #8892a4;
+    --text-muted: #4a5568;
+    --font: 'Outfit', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100dvh; overflow-x: hidden; }
+
+  /* ── Setup Screen ── */
+  #setup-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100dvh; padding: 24px; gap: 24px;
+  }
+  .setup-card {
+    width: 100%; max-width: 420px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 20px;
+  }
+  .setup-logo { display: flex; align-items: center; gap: 10px; }
+  .setup-logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .setup-logo-icon svg { width: 18px; height: 18px; fill: #000; }
+  .setup-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .setup-sub { font-size: 13px; color: var(--text-sub); line-height: 1.6; }
+  .setup-field { display: flex; flex-direction: column; gap: 6px; }
+  .setup-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-sub); }
+  .setup-input {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 12px;
+    outline: none; width: 100%; transition: border-color 0.2s;
+  }
+  .setup-input:focus { border-color: var(--accent); }
+  .setup-input::placeholder { color: var(--text-muted); }
+  .setup-btn {
+    padding: 12px; background: var(--accent); color: #000; border: none;
+    border-radius: 10px; font-family: var(--font); font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.2s; width: 100%;
+  }
+  .setup-btn:hover { opacity: 0.9; }
+  .setup-hint { font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.6; }
+  .setup-hint a { color: var(--accent); text-decoration: none; }
+
+  /* ── Main App ── */
+  #app { display: none; flex-direction: column; min-height: 100dvh; }
+
+  /* Header */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; height: 52px;
+    background: rgba(13,16,24,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .h-logo { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+  .h-logo span { color: var(--accent); }
+  .mode-pill {
+    font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+    text-transform: uppercase; letter-spacing: 0.8px; font-family: var(--mono);
+    transition: all 0.3s;
+  }
+  .mode-solo { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,229,176,0.25); }
+  .mode-meeting { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,71,87,0.25); animation: pulse-border 2s infinite; }
+  .mode-review { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(255,176,32,0.25); }
+  .header-right { display: flex; align-items: center; gap: 6px; }
+  .h-btn {
+    background: none; border: 1px solid var(--border); border-radius: 7px;
+    color: var(--text-sub); cursor: pointer; padding: 5px 9px; font-size: 11px;
+    font-family: var(--font); display: flex; align-items: center; gap: 4px; transition: all 0.2s;
+  }
+  .h-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .h-btn svg { width: 12px; height: 12px; }
+
+  /* Tabs (mobile) */
+  .tabs {
+    display: flex; background: var(--surface); border-bottom: 1px solid var(--border);
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0; padding: 10px 16px; font-size: 12px; font-weight: 600;
+    color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* Content */
+  .content { flex: 1; overflow-y: auto; }
+  .tab-panel { display: none; padding: 16px; }
+  .tab-panel.active { display: block; }
+
+  /* ── Voice Panel ── */
+  .voice-panel { display: flex; flex-direction: column; align-items: center; gap: 16px; padding-top: 8px; }
+
+  /* Orb */
+  .orb-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 140px; height: 140px; }
+  .orb {
+    width: 110px; height: 110px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #1a2535, #0d1018);
+    border: 1.5px solid var(--border); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; z-index: 2; transition: all 0.2s; user-select: none;
+    -webkit-tap-highlight-color: transparent; touch-action: none;
+  }
+  .orb.listening {
+    background: radial-gradient(circle at 35% 35%, rgba(255,71,87,0.3), var(--danger-dim));
+    border-color: var(--danger); box-shadow: 0 0 30px rgba(255,71,87,0.3), 0 0 0 1px rgba(255,71,87,0.4);
+  }
+  .orb.processing {
+    background: radial-gradient(circle at 35% 35%, rgba(0,229,176,0.2), var(--accent-dim));
+    border-color: var(--accent); box-shadow: 0 0 30px var(--accent-glow);
+  }
+  .orb-icon { width: 36px; height: 36px; }
+  .orb-ring {
+    position: absolute; width: 140px; height: 140px; border-radius: 50%;
+    border: 1.5px solid rgba(255,71,87,0.3); animation: ring-expand 1.5s ease-out infinite;
+    pointer-events: none;
+  }
+  .orb-ring2 {
+    position: absolute; width: 140px; height: 140px; border-radius: 50%;
+    border: 1.5px solid rgba(255,71,87,0.15); animation: ring-expand 1.5s ease-out 0.5s infinite;
+    pointer-events: none;
+  }
+  .orb-hint { font-size: 11px; color: var(--text-muted); font-family: var(--mono); text-align: center; letter-spacing: 0.3px; }
+
+  /* Transcript */
+  .transcript-box {
+    width: 100%; max-width: 380px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 3px; animation: slide-up 0.2s ease;
+  }
+  .transcript-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-family: var(--mono); }
+  .transcript-text { font-size: 14px; color: var(--text); font-style: italic; line-height: 1.5; }
+
+  /* Response */
+  .response-box {
+    width: 100%; max-width: 380px; background: var(--accent-dim);
+    border: 1px solid rgba(0,229,176,0.2); border-radius: 10px; padding: 12px 14px;
+    font-size: 13px; line-height: 1.6; color: var(--text); animation: slide-up 0.2s ease;
+  }
+
+  /* Pending approval */
+  .pending-box {
+    width: 100%; max-width: 380px; background: var(--warn-dim);
+    border: 1px solid rgba(255,176,32,0.3); border-radius: 12px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px; animation: slide-up 0.2s ease;
+  }
+  .pending-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--warn); font-family: var(--mono); display: flex; align-items: center; gap: 5px; }
+  .pending-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+  .pending-btns { display: flex; gap: 8px; }
+  .btn-confirm { flex: 1; padding: 10px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; }
+  .btn-cancel { flex: 1; padding: 10px; background: var(--surface2); color: var(--text-sub); border: 1px solid var(--border); border-radius: 8px; font-family: var(--font); font-size: 13px; cursor: pointer; }
+
+  /* Meeting notes */
+  .notes-box {
+    width: 100%; max-width: 380px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  }
+  .notes-header { padding: 10px 14px; background: var(--surface2); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .notes-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-sub); }
+  .notes-count { font-size: 10px; color: var(--text-muted); font-family: var(--mono); }
+  .notes-list { padding: 10px 14px; max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+  .note-item { font-size: 12px; color: var(--text-sub); line-height: 1.5; display: flex; gap: 6px; }
+  .note-dot { color: var(--accent); flex-shrink: 0; }
+  .notes-empty { font-size: 12px; color: var(--text-muted); text-align: center; padding: 12px 0; }
+  .end-meeting-btn { width: 100%; padding: 11px; background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,71,87,0.25); border-top: none; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; }
+
+  /* Summary */
+  .summary-box {
+    width: 100%; max-width: 380px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px; animation: slide-up 0.2s ease;
+  }
+  .summary-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }
+  .summary-text { font-size: 13px; color: var(--text); line-height: 1.7; }
+  .summary-section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 5px; }
+  .action-item { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; color: var(--text-sub); margin-bottom: 5px; line-height: 1.5; }
+  .ai-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .due-tag { font-size: 10px; color: var(--text-muted); font-family: var(--mono); margin-left: auto; flex-shrink: 0; }
+  .disposition-row { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+
+  /* Quick commands */
+  .quick-cmds { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 380px; }
+  .quick-cmd { padding: 5px 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; color: var(--text-muted); font-family: var(--mono); cursor: pointer; transition: all 0.15s; }
+  .quick-cmd:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* SF link */
+  .sf-link { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); text-decoration: none; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--border); transition: all 0.2s; }
+  .sf-link:hover { border-color: var(--accent); color: var(--accent); }
+  .sf-link svg { width: 11px; height: 11px; }
+
+  /* ── Appointments ── */
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-sub); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .section-title svg { width: 13px; height: 13px; }
+  .appt-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 5px;
+    transition: border-color 0.2s;
+  }
+  .appt-card.new-client { border-color: rgba(255,176,32,0.3); background: var(--warn-dim); }
+  .appt-time { font-size: 10px; color: var(--text-muted); font-family: var(--mono); }
+  .appt-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .new-badge { font-size: 9px; font-weight: 800; padding: 1px 5px; background: var(--warn-dim); color: var(--warn); border-radius: 3px; letter-spacing: 0.5px; border: 1px solid rgba(255,176,32,0.3); }
+  .soa-status { font-size: 10px; font-family: var(--mono); display: flex; align-items: center; gap: 4px; }
+  .soa-done { color: var(--accent); }
+  .soa-pending { color: var(--warn); }
+  .appt-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .appt-tag { font-size: 9px; padding: 2px 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text-muted); }
+  .brief-btn { align-self: flex-start; padding: 4px 10px; background: none; border: 1px solid var(--border); border-radius: 5px; color: var(--text-muted); font-size: 11px; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
+  .brief-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Clients ── */
+  .client-search { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-family: var(--font); font-size: 13px; outline: none; margin-bottom: 12px; }
+  .client-search:focus { border-color: var(--accent); }
+  .client-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .client-name-row { font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+  .client-plan { font-size: 11px; color: var(--text-sub); }
+  .client-email { font-size: 10px; color: var(--text-muted); font-family: var(--mono); }
+  .client-actions { display: flex; gap: 6px; margin-top: 4px; }
+  .client-btn { padding: 4px 9px; background: none; border: 1px solid var(--border); border-radius: 5px; color: var(--text-muted); font-size: 10px; cursor: pointer; font-family: var(--font); transition: all 0.2s; }
+  .client-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Notifications ── */
+  .notif-bar { padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 6px; flex-wrap: wrap; }
+  .notif-chip { display: flex; align-items: center; gap: 5px; font-size: 10px; padding: 3px 9px; border-radius: 20px; font-family: var(--mono); animation: slide-in 0.3s ease; }
+  .notif-chip svg { width: 10px; height: 10px; }
+  .notif-success { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,229,176,0.2); }
+  .notif-warn { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(255,176,32,0.2); }
+  .notif-error { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(255,71,87,0.2); }
+
+  /* ── Alerts ── */
+  .alert-card { padding: 10px 12px; border-radius: 9px; margin-bottom: 7px; display: flex; flex-direction: column; gap: 3px; }
+  .alert-high { background: var(--danger-dim); border: 1px solid rgba(255,71,87,0.2); }
+  .alert-normal { background: var(--warn-dim); border: 1px solid rgba(255,176,32,0.15); }
+  .alert-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--warn); }
+  .alert-msg { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+
+  /* ── Settings ── */
+  .settings-group { margin-bottom: 20px; }
+  .settings-group-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 10px; }
+  .settings-item { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; margin-bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .settings-label { font-size: 12px; font-weight: 600; }
+  .settings-val { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+  .settings-input { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: var(--text); font-family: var(--mono); font-size: 11px; width: 100%; outline: none; margin-top: 4px; }
+  .settings-input:focus { border-color: var(--accent); }
+  .save-settings-btn { width: 100%; padding: 11px; background: var(--accent); color: #000; border: none; border-radius: 9px; font-family: var(--font); font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 4px; }
+
+  /* ── Add Client Modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); }
+  .modal { background: var(--surface); border-radius: 16px 16px 0 0; padding: 20px; width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 12px; }
+  .modal-title { font-size: 15px; font-weight: 700; }
+  .modal-field { display: flex; flex-direction: column; gap: 5px; }
+  .modal-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+  .modal-input { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; color: var(--text); font-family: var(--font); font-size: 13px; outline: none; }
+  .modal-input:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 8px; }
+  .modal-save { flex: 1; padding: 11px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-family: var(--font); font-size: 13px; font-weight: 700; cursor: pointer; }
+  .modal-close { padding: 11px 16px; background: var(--surface2); color: var(--text-sub); border: 1px solid var(--border); border-radius: 8px; font-family: var(--font); font-size: 13px; cursor: pointer; }
+
+  /* ── Animations ── */
+  @keyframes pulse-border { 0%,100% { box-shadow: 0 0 0 0 rgba(255,71,87,0.2); } 50% { box-shadow: 0 0 0 4px rgba(255,71,87,0); } }
+  @keyframes ring-expand { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes slide-up { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes slide-in { from { transform: translateX(-8px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes pulse-orb { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+  .spin { animation: spin 0.8s linear infinite; }
+  .pulse { animation: pulse-orb 1.2s ease-in-out infinite; }
+
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Desktop layout ── */
+  @media (min-width: 768px) {
+    .tabs { display: none; }
+    .content { display: flex; height: calc(100dvh - 52px); }
+    .tab-panel { display: block !important; width: 260px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; height: 100%; }
+    #panel-voice { flex: 1; border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
+    #panel-clients { display: none !important; }
+    #panel-settings { width: 240px; flex-shrink: 0; border-right: none; }
+    #panel-voice .voice-panel { min-height: calc(100dvh - 120px); justify-content: center; }
+  }
+</style>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════ SETUP SCREEN ═══════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <div class="setup-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div>
+        <div class="setup-title">DDI Medicare Agent</div>
+        <div style="font-size:11px;color:var(--text-muted)">Larry · DDI Insurance Group</div>
+      </div>
+    </div>
+    <div class="setup-sub">Enter your Anthropic API key to start. Your key stays on this device — it's never sent anywhere except directly to Anthropic's servers to power the AI.</div>
+    <div class="setup-field">
+      <div class="setup-label">Anthropic API Key</div>
+      <input class="setup-input" id="setup-key" type="password" placeholder="sk-ant-...">
+    </div>
+    <div class="setup-field">
+      <div class="setup-label">Deepgram API Key <span style="color:var(--text-muted);font-weight:400">(optional — for voice)</span></div>
+      <input class="setup-input" id="setup-dg" type="password" placeholder="Leave blank to use text input">
+    </div>
+    <button class="setup-btn" onclick="startApp()">Launch Agent →</button>
+    <div class="setup-hint">
+      Get your Anthropic key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>
+      Deepgram key at <a href="https://console.deepgram.com" target="_blank">console.deepgram.com</a> (sign HIPAA BAA first)
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MAIN APP ═══════════════ -->
+<div id="app">
+  <header class="header">
+    <div class="header-left">
+      <div class="h-logo">DDI <span>Agent</span></div>
+      <div class="mode-pill mode-solo" id="mode-pill">● Solo</div>
+    </div>
+    <div id="meeting-client-name" style="font-size:13px;font-weight:600;color:var(--danger);display:none"></div>
+    <div class="header-right">
+      <button class="h-btn" onclick="triggerBriefing()" title="Morning briefing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Brief
+      </button>
+      <button class="h-btn" onclick="openAddClient()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Add
+      </button>
+    </div>
+  </header>
+
+  <div id="notif-bar" class="notif-bar" style="display:none"></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('voice')">🎙 Voice</div>
+    <div class="tab" onclick="showTab('appointments')">📅 Upcoming</div>
+    <div class="tab" onclick="showTab('clients')">👤 Clients</div>
+    <div class="tab" onclick="showTab('alerts')">⚡ Alerts</div>
+    <div class="tab" onclick="showTab('settings')">⚙️ Settings</div>
+  </div>
+
+  <div class="content">
+
+    <!-- APPOINTMENTS PANEL -->
+    <div class="tab-panel" id="panel-appointments">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Next 7 Days
+      </div>
+      <div id="appt-list"></div>
+    </div>
+
+    <!-- VOICE PANEL -->
+    <div class="tab-panel active" id="panel-voice">
+      <div class="voice-panel" id="voice-panel">
+        <div class="orb-wrap" id="orb-wrap">
+          <div class="orb" id="orb" onmousedown="startListen()" onmouseup="stopListen()" ontouchstart="startListen(event)" ontouchend="stopListen(event)">
+            <svg class="orb-icon" id="orb-icon" viewBox="0 0 24 24" fill="none" stroke="var(--text-sub)" stroke-width="1.5">
+              <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </div>
+        </div>
+        <div class="orb-hint" id="orb-hint">Hold to speak · Space bar shortcut</div>
+
+        <div id="transcript-box" class="transcript-box" style="display:none">
+          <div class="transcript-label">You said</div>
+          <div class="transcript-text" id="transcript-text"></div>
+        </div>
+
+        <div id="response-box" class="response-box" style="display:none"></div>
+
+        <div id="pending-box" class="pending-box" style="display:none">
+          <div class="pending-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Awaiting Approval
+          </div>
+          <div class="pending-text" id="pending-text"></div>
+          <div class="pending-btns">
+            <button class="btn-confirm" onclick="approvePending()">✓ Confirm</button>
+            <button class="btn-cancel" onclick="cancelPending()">Cancel</button>
+          </div>
+        </div>
+
+        <div id="notes-box" class="notes-box" style="display:none">
+          <div class="notes-header">
+            <div class="notes-title">Meeting Notes</div>
+            <div class="notes-count" id="notes-count">0 notes</div>
+          </div>
+          <div class="notes-list" id="notes-list">
+            <div class="notes-empty">Say "Add note:" followed by your note</div>
+          </div>
+          <button class="end-meeting-btn" onclick="endMeeting()">End Meeting & Summarize →</button>
+        </div>
+
+        <div id="summary-box" class="summary-box" style="display:none"></div>
+
+        <div id="quick-cmds" class="quick-cmds">
+          <div class="quick-cmd" onclick="typeCommand('Brief me on')">Brief me on…</div>
+          <div class="quick-cmd" onclick="typeCommand('Send SOA to')">Send SOA to…</div>
+          <div class="quick-cmd" onclick="typeCommand('Start meeting with')">Start meeting…</div>
+          <div class="quick-cmd" onclick="typeCommand('Check emails')">Check emails</div>
+          <div class="quick-cmd" onclick="typeCommand('Add note:')">Add note…</div>
+          <div class="quick-cmd" onclick="typeCommand('Remind me to call')">Add task…</div>
+        </div>
+
+        <!-- Text fallback input -->
+        <div style="width:100%;max-width:380px;display:flex;gap:8px;margin-top:4px">
+          <input id="text-cmd" type="text" placeholder="Or type a command…" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')sendTextCmd()">
+          <button onclick="sendTextCmd()" style="padding:9px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;">→</button>
+        </div>
+
+        <a href="https://www.sunfirematrix.com/app/consumer/ember/?sfpath=spa&sfagid=20791041" target="_blank" class="sf-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open SunfireMatrix
+        </a>
+      </div>
+    </div>
+
+    <!-- CLIENTS PANEL -->
+    <div class="tab-panel" id="panel-clients">
+      <input class="client-search" id="client-search" placeholder="Search clients…" oninput="renderClients(this.value)">
+      <div id="client-list"></div>
+    </div>
+
+    <!-- ALERTS PANEL -->
+    <div class="tab-panel" id="panel-alerts">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Eligibility Alerts
+      </div>
+      <div id="alert-list"></div>
+    </div>
+
+    <!-- SETTINGS PANEL -->
+    <div class="tab-panel" id="panel-settings">
+      <div class="settings-group">
+        <div class="settings-group-title">Broker Profile</div>
+        <div class="settings-item">
+          <div class="settings-label">Name</div>
+          <div class="settings-val">Larry · DDI Insurance Group</div>
+        </div>
+        <div class="settings-item">
+          <div class="settings-label">Email</div>
+          <div class="settings-val">larry@ddinsgroup.com</div>
+        </div>
+        <div class="settings-item">
+          <div class="settings-label">NPN</div>
+          <div class="settings-val">20791041</div>
+        </div>
+        <div class="settings-item">
+          <div class="settings-label">Licensed States</div>
+          <div class="settings-val">Oklahoma · Texas</div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title">API Keys</div>
+        <div class="settings-item">
+          <div class="settings-label">Anthropic API Key</div>
+          <input class="settings-input" id="settings-key" type="password" placeholder="sk-ant-...">
+        </div>
+        <div class="settings-item">
+          <div class="settings-label">Deepgram API Key</div>
+          <input class="settings-input" id="settings-dg" type="password" placeholder="Deepgram key (sign HIPAA BAA first)">
+        </div>
+        <button class="save-settings-btn" onclick="saveSettings()">Save Settings</button>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-title">Quick Links</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <a href="https://www.sunfirematrix.com/app/agent/ember/" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none">→ SunfireMatrix Agent Portal</a>
+          <a href="https://www.sunfirematrix.com/app/consumer/ember/?sfpath=spa&sfagid=20791041" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none">→ Client PURL Link</a>
+          <a href="https://sparkadvisor.com" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none">→ SparkAdvisor CRM</a>
+          <a href="https://console.anthropic.com" target="_blank" style="color:var(--text-muted);font-size:12px;text-decoration:none">→ Anthropic Console</a>
+          <a href="https://console.deepgram.com" target="_blank" style="color:var(--text-muted);font-size:12px;text-decoration:none">→ Deepgram Console</a>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end .content -->
+</div><!-- end #app -->
+
+<!-- Add Client Modal -->
+<div class="modal-overlay" id="add-client-modal" style="display:none" onclick="if(event.target===this)closeAddClient()">
+  <div class="modal">
+    <div class="modal-title">Add New Client / Lead</div>
+    <div class="modal-field"><div class="modal-label">Full Name *</div><input class="modal-input" id="mc-name" placeholder="Jane Smith"></div>
+    <div class="modal-field"><div class="modal-label">Email</div><input class="modal-input" id="mc-email" type="email" placeholder="jane@example.com"></div>
+    <div class="modal-field"><div class="modal-label">Phone</div><input class="modal-input" id="mc-phone" type="tel" placeholder="405-555-1234"></div>
+    <div class="modal-field"><div class="modal-label">Current Plan</div><input class="modal-input" id="mc-plan" placeholder="e.g. Humana Gold Plus HMO"></div>
+    <div class="modal-field"><div class="modal-label">Notes</div><input class="modal-input" id="mc-notes" placeholder="Turning 65 in July, interested in MA plans"></div>
+    <div class="modal-field">
+      <div class="modal-label">State</div>
+      <select class="modal-input" id="mc-state">
+        <option value="OK">Oklahoma</option>
+        <option value="TX">Texas</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-save" onclick="saveClient()">Save Client</button>
+      <button class="modal-close" onclick="closeAddClient()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DDI MEDICARE VOICE AGENT — Browser Runtime
+// ═══════════════════════════════════════════════════════════════
+
+const SUNFIRE_PURL = 'https://www.sunfirematrix.com/app/consumer/ember/?sfpath=spa&sfagid=20791041';
+const BROKER = { name: 'Larry', email: 'larry@ddinsgroup.com', npn: '20791041', agency: 'DDI Insurance Group', states: ['OK', 'TX'] };
+const BACKEND = 'https://voice-first-ai-agent-medicare-production.up.railway.app';
+
+// ── State ──────────────────────────────────────────────────────
+let state = {
+  mode: 'solo',            // solo | meeting | review
+  isListening: false,
+  isProcessing: false,
+  sessionNotes: [],
+  activeClient: null,
+  sessionId: null,
+  pendingAction: null,
+  clients: [],
+  appointments: [],
+  alerts: [],
+  anthropicKey: '',
+  deepgramKey: '',
+};
+
+// ── Storage ────────────────────────────────────────────────────
+function save(key, val) { try { localStorage.setItem('ddi_' + key, JSON.stringify(val)); } catch(e){} }
+function load(key, def) { try { const v = localStorage.getItem('ddi_' + key); return v ? JSON.parse(v) : def; } catch(e){ return def; } }
+
+// ── Boot ───────────────────────────────────────────────────────
+function startApp() {
+  const key = document.getElementById('setup-key').value.trim();
+  const dg = document.getElementById('setup-dg').value.trim();
+  if (!key) { alert('Please enter your Anthropic API key'); return; }
+  state.anthropicKey = key;
+  state.deepgramKey = dg;
+  save('anthro_key', key);
+  save('dg_key', dg);
+  launch();
+}
+
+function launch() {
+  state.anthropicKey = load('anthro_key', '');
+  state.deepgramKey = load('dg_key', '');
+  state.clients = load('clients', []);
+  state.appointments = load('appointments', []);
+
+  if (!state.anthropicKey) {
+    document.getElementById('setup-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  // Populate settings fields
+  document.getElementById('settings-key').value = state.anthropicKey;
+  document.getElementById('settings-dg').value = state.deepgramKey;
+
+  renderAppointments();
+  renderClients('');
+  checkEligibility();
+  setupKeyboard();
+  connectBackend();
+}
+
+window.addEventListener('load', launch);
+
+function saveSettings() {
+  state.anthropicKey = document.getElementById('settings-key').value.trim();
+  state.deepgramKey = document.getElementById('settings-dg').value.trim();
+  save('anthro_key', state.anthropicKey);
+  save('dg_key', state.deepgramKey);
+  showNotif('Settings saved', 'success');
+}
+
+// ── Tabs ───────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab[onclick="showTab('${name}')"]`).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── Keyboard shortcut ──────────────────────────────────────────
+function setupKeyboard() {
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      if (!state.isListening) startListen();
+    }
+  });
+  window.addEventListener('keyup', e => {
+    if (e.code === 'Space' && state.isListening) { e.preventDefault(); stopListen(); }
+  });
+}
+
+// ── Voice: STT via Deepgram WebSocket ─────────────────────────
+let wsSTT = null, mediaStream = null, audioCtx = null, processor = null;
+
+function startListen(e) {
+  if (e) e.preventDefault();
+  if (state.isListening || state.isProcessing) return;
+
+  if (!state.deepgramKey) {
+    // No Deepgram key — focus text input instead
+    document.getElementById('text-cmd').focus();
+    showNotif('No Deepgram key — use text input below', 'warn');
+    return;
+  }
+
+  state.isListening = true;
+  setOrbState('listening');
+
+  navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true } })
+    .then(stream => {
+      mediaStream = stream;
+      const params = new URLSearchParams({ model: 'nova-3', language: 'en-US', smart_format: 'true', punctuate: 'true', interim_results: 'false', endpointing: '300', encoding: 'linear16', sample_rate: '16000' });
+      wsSTT = new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`, ['token', state.deepgramKey]);
+
+      wsSTT.onmessage = e => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'Results' && msg.is_final) {
+            const t = msg.channel?.alternatives?.[0]?.transcript;
+            if (t && t.trim()) { stopListen(); processCommand(t.trim()); }
+          }
+        } catch(err){}
+      };
+
+      wsSTT.onopen = () => {
+        audioCtx = new AudioContext({ sampleRate: 16000 });
+        const src = audioCtx.createMediaStreamSource(stream);
+        processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        processor.onaudioprocess = ev => {
+          if (wsSTT?.readyState !== 1) return;
+          const f32 = ev.inputBuffer.getChannelData(0);
+          const i16 = new Int16Array(f32.length);
+          for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-32768, Math.min(32767, f32[i] * 32767));
+          wsSTT.send(i16.buffer);
+        };
+        src.connect(processor);
+        processor.connect(audioCtx.destination);
+      };
+
+      wsSTT.onerror = () => { stopListen(); showNotif('Microphone error', 'error'); };
+    })
+    .catch(() => { stopListen(); showNotif('Microphone access denied', 'error'); });
+}
+
+function stopListen(e) {
+  if (e) e.preventDefault();
+  if (!state.isListening) return;
+  state.isListening = false;
+  if (processor) { processor.disconnect(); processor = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (wsSTT) { try { wsSTT.close(); } catch(e){} wsSTT = null; }
+  if (!state.isProcessing) setOrbState('idle');
+}
+
+// ── Text fallback ──────────────────────────────────────────────
+function sendTextCmd() {
+  const inp = document.getElementById('text-cmd');
+  const cmd = inp.value.trim();
+  if (!cmd) return;
+  inp.value = '';
+  processCommand(cmd);
+}
+
+function typeCommand(prefix) {
+  const inp = document.getElementById('text-cmd');
+  inp.value = prefix + ' ';
+  inp.focus();
+  showTab('voice');
+}
+
+// ── Process command → Claude → action ─────────────────────────
+async function processCommand(transcript) {
+  setOrbState('processing');
+  state.isProcessing = true;
+  showTranscript(transcript);
+  hideResponse();
+
+  try {
+    const { intent, entities } = await classifyIntent(transcript);
+    await routeIntent(intent, entities, transcript);
+  } catch(e) {
+    showResponse(`Sorry, something went wrong: ${e.message}. Check your API key in Settings.`);
+  } finally {
+    state.isProcessing = false;
+    setOrbState('idle');
+  }
+}
+
+// ── Intent Classification (Claude Haiku) ──────────────────────
+async function classifyIntent(transcript) {
+  const resp = await callClaude('claude-haiku-4-5', 200,
+    `Classify this Medicare broker voice command. Return ONLY valid JSON:
+{"intent":"<intent>","entities":{"client_name":"","plan_name":"","note_text":"","time_ref":""}}
+Intents: brief_me, send_soa, start_meeting, add_note, end_meeting, approve, cancel, check_email, reply_email, add_task, new_lead, pull_plans, start_enrollment, morning_briefing, unknown
+Rules: "looks good"/"send it"/"confirmed" → approve. "cancel"/"never mind" → cancel. Extract client names, note text, time references.`,
+    transcript
+  );
+  try { return JSON.parse(resp); } catch { return { intent: 'unknown', entities: {} }; }
+}
+
+// ── Intent Router ──────────────────────────────────────────────
+async function routeIntent(intent, entities, raw) {
+  switch (intent) {
+
+    case 'brief_me': {
+      const cn = entities.client_name;
+      if (!cn) { showResponse("Who would you like me to brief you on?"); return; }
+      const client = findClient(cn);
+      if (!client) { showResponse(`I couldn't find "${cn}" in your client list. You can add them using the Add button.`); return; }
+      const briefing = await buildBriefing(client);
+      showResponse(briefing);
+      await speak(briefing);
+      break;
+    }
+
+    case 'send_soa': {
+      const cn = entities.client_name;
+      if (!cn) { showResponse("Who should I send the SOA to?"); return; }
+      const client = findClient(cn);
+      if (!client) { showResponse(`I couldn't find "${cn}" in your client list.`); return; }
+      const msg = `Send the SunfireMatrix BlazeSync / SOA link to ${client.name}${client.phone ? ' at ' + client.phone : ''}${client.email ? ' and ' + client.email : ''}. This gives them the scope of appointment and lets them enter their drugs and providers before your meeting.`;
+      setPending(msg, () => {
+        markSOASent(client);
+        showResponse(`SOA link sent to ${client.name}. I've noted the send date.`);
+        showNotif(`SOA sent to ${client.name}`, 'success');
+        window.open(SUNFIRE_PURL, '_blank');
+      });
+      break;
+    }
+
+    case 'start_meeting': {
+      const cn = entities.client_name;
+      const client = cn ? findClient(cn) : null;
+      if (client && !client.soaCompleted) {
+        showResponse(`⚠️ CMS Warning: SOA has not been completed for ${client.name}. You should have a completed SOA before presenting plans. Say "override" to proceed anyway, or "send SOA" to send it now.`);
+        return;
+      }
+      startMeeting(client || { name: cn || 'Client' });
+      break;
+    }
+
+    case 'add_note': {
+      const note = entities.note_text || raw.replace(/^add note[:\s]*/i, '');
+      if (!note) { showResponse("What should I note?"); return; }
+      if (state.mode !== 'meeting') { showResponse("Start a meeting first, then I can add notes."); return; }
+      addNote(note);
+      break;
+    }
+
+    case 'end_meeting':
+      await endMeeting();
+      break;
+
+    case 'approve':
+      if (state.pendingAction) { state.pendingAction(); state.pendingAction = null; hidePending(); }
+      else { showResponse("There's nothing waiting for approval right now."); }
+      break;
+
+    case 'cancel':
+      cancelPending();
+      break;
+
+    case 'add_task': {
+      const cn = entities.client_name;
+      const timeRef = entities.time_ref || 'in 2 weeks';
+      const client = cn ? findClient(cn) : null;
+      const desc = `Follow up with ${cn || 'client'} ${timeRef}`;
+      showResponse(`Task created: "${desc}". I've added it to your follow-up list.`);
+      if (client) { client.tasks = client.tasks || []; client.tasks.push({ desc, created: new Date().toISOString() }); saveClients(); }
+      showNotif('Task created', 'success');
+      break;
+    }
+
+    case 'new_lead': {
+      openAddClient();
+      showResponse("Opening the new client form. Fill in what you know — everything is optional except the name.");
+      break;
+    }
+
+    case 'pull_plans':
+    case 'start_enrollment': {
+      const cn = entities.client_name;
+      const client = cn ? findClient(cn) : state.activeClient;
+      showResponse(`Opening SunfireMatrix${client ? ' for ' + client.name : ''}. Review all fields before submitting enrollment.`);
+      window.open(SUNFIRE_PURL, '_blank');
+      break;
+    }
+
+    case 'check_email': {
+      showResponse(`To check your Outlook emails from clients, say "Reply to [client name]" and I'll draft it. For full email access you'll need the backend server connected to Microsoft Graph. For now, you can open Outlook directly.`);
+      break;
+    }
+
+    case 'morning_briefing':
+      await triggerBriefing();
+      break;
+
+    case 'unknown':
+    default: {
+      // Try to be helpful with freeform questions
+      const answer = await callClaude('claude-sonnet-4-6', 400,
+        `You are Spark, a voice AI assistant for Larry, a Medicare insurance broker in Oklahoma and Texas (DDI Insurance Group, NPN 20791041). Answer this broker question concisely and accurately. Focus on Medicare rules, OK/TX state specifics, or broker workflow. If it's a voice command you don't understand, explain what commands you support. Keep response under 3 sentences.`,
+        raw
+      );
+      showResponse(answer);
+      await speak(answer);
+    }
+  }
+}
+
+// ── Meeting flow ───────────────────────────────────────────────
+function startMeeting(client) {
+  state.mode = 'meeting';
+  state.activeClient = client;
+  state.sessionNotes = [];
+  state.sessionId = Date.now().toString();
+  setMode('meeting');
+  document.getElementById('notes-box').style.display = 'block';
+  document.getElementById('quick-cmds').style.display = 'none';
+  document.getElementById('meeting-client-name').style.display = 'block';
+  document.getElementById('meeting-client-name').textContent = `● ${client.name}`;
+  hideResponse();
+  hidePending();
+  showNotif(`Meeting started with ${client.name}`, 'success');
+}
+
+function addNote(text) {
+  state.sessionNotes.push(text);
+  renderNotes();
+  document.getElementById('response-box').style.display = 'none';
+}
+
+function renderNotes() {
+  const list = document.getElementById('notes-list');
+  const count = document.getElementById('notes-count');
+  count.textContent = `${state.sessionNotes.length} note${state.sessionNotes.length !== 1 ? 's' : ''}`;
+  if (state.sessionNotes.length === 0) {
+    list.innerHTML = '<div class="notes-empty">Say "Add note:" followed by your note</div>';
+  } else {
+    list.innerHTML = state.sessionNotes.map(n => `<div class="note-item"><span class="note-dot">·</span>${escHtml(n)}</div>`).join('');
+    list.scrollTop = list.scrollHeight;
+  }
+}
+
+async function endMeeting() {
+  if (state.mode !== 'meeting') { showResponse("No active meeting session."); return; }
+  if (state.sessionNotes.length === 0) { showResponse("I don't have any notes from this meeting. Try adding some notes first with 'Add note: ...'"); return; }
+
+  setOrbState('processing');
+  state.isProcessing = true;
+
+  try {
+    const summaryJson = await callClaude('claude-sonnet-4-6', 800,
+      `Summarize this Medicare broker meeting. Return ONLY valid JSON:
+{"summary":"2-3 sentence narrative","action_items":[{"task":"...","due_date":"in X days/weeks"}],"disposition":"enrolled|follow_up|declined|callback","tts":"spoken summary for broker approval, 2-3 sentences"}`,
+      `Client: ${state.activeClient?.name || 'Unknown'}\nNotes:\n${state.sessionNotes.join('\n')}`
+    );
+
+    let summary;
+    try { summary = JSON.parse(summaryJson); }
+    catch { summary = { summary: state.sessionNotes.join(' '), action_items: [], disposition: 'follow_up', tts: state.sessionNotes.join(' ') }; }
+
+    state.mode = 'review';
+    setMode('review');
+    document.getElementById('notes-box').style.display = 'none';
+
+    // Show summary
+    const sBox = document.getElementById('summary-box');
+    sBox.style.display = 'flex';
+    sBox.innerHTML = `
+      <div class="summary-title">Meeting Summary — ${escHtml(state.activeClient?.name || '')}</div>
+      <div class="summary-text">${escHtml(summary.summary)}</div>
+      ${summary.action_items?.length > 0 ? `
+        <div>
+          <div class="summary-section">Action Items</div>
+          ${summary.action_items.map(a => `<div class="action-item"><div class="ai-dot"></div><span>${escHtml(a.task)}</span><span class="due-tag">${escHtml(a.due_date||'')}</span></div>`).join('')}
+        </div>` : ''}
+      <div class="disposition-row">Disposition: <strong style="color:${dispColor(summary.disposition)}">${(summary.disposition||'').replace('_',' ').toUpperCase()}</strong></div>
+    `;
+
+    const readback = (summary.tts || summary.summary) + " Say 'looks good' to save, or tell me what to change.";
+    setPending(readback, () => {
+      // Save to local storage as activity log
+      if (state.activeClient) {
+        state.activeClient.lastMeeting = new Date().toISOString();
+        state.activeClient.lastSummary = summary.summary;
+        state.activeClient.disposition = summary.disposition;
+        if (summary.action_items?.length) {
+          state.activeClient.tasks = (state.activeClient.tasks || []).concat(
+            summary.action_items.map(a => ({ desc: a.task, due: a.due_date, created: new Date().toISOString() }))
+          );
+        }
+        saveClients();
+      }
+      endMeetingCleanup();
+      showNotif('Meeting notes saved', 'success');
+      showResponse('✓ Meeting notes saved. ' + (summary.action_items?.length || 0) + ' follow-up tasks created. When SparkAdvisor webhooks are connected, these will sync automatically.');
+    });
+
+    await speak(readback);
+  } finally {
+    state.isProcessing = false;
+    setOrbState('idle');
+  }
+}
+
+function endMeetingCleanup() {
+  state.mode = 'solo';
+  state.sessionNotes = [];
+  state.activeClient = null;
+  state.sessionId = null;
+  setMode('solo');
+  document.getElementById('meeting-client-name').style.display = 'none';
+  document.getElementById('quick-cmds').style.display = 'flex';
+  document.getElementById('notes-box').style.display = 'none';
+  document.getElementById('summary-box').style.display = 'none';
+}
+
+// ── Briefing ───────────────────────────────────────────────────
+async function triggerBriefing() {
+  setOrbState('processing');
+  state.isProcessing = true;
+
+  try {
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
+    const apptToday = state.appointments.filter(a => {
+      const d = new Date(a.date);
+      return d.toDateString() === new Date().toDateString();
+    });
+    const alerts = computeAlerts().slice(0, 3);
+    const tasks = state.clients.flatMap(c => (c.tasks || []).filter(t => !t.done)).slice(0, 5);
+
+    const context = {
+      date: today, broker: BROKER.name,
+      appointments_today: apptToday.map(a => ({ name: a.clientName, time: a.time, soa: a.soaCompleted })),
+      tasks_due: tasks.map(t => t.desc),
+      eligibility_alerts: alerts.map(a => a.msg),
+      total_clients: state.clients.length,
+    };
+
+    const script = await callClaude('claude-sonnet-4-6', 350,
+      `You are Spark, voice AI assistant for ${BROKER.name} at DDI Insurance Group, Medicare broker in Oklahoma and Texas. Build a concise morning briefing. Speak directly to ${BROKER.name}. Natural flowing sentences, not bullet points. Under 200 words. End with "Ready to start?"`,
+      JSON.stringify(context)
+    );
+
+    showResponse(script);
+    await speak(script);
+  } finally {
+    state.isProcessing = false;
+    setOrbState('idle');
+  }
+}
+
+// ── Client briefing builder ────────────────────────────────────
+async function buildBriefing(client) {
+  const parts = [];
+  parts.push(`Here's your briefing on ${client.name}.`);
+  if (client.dob) { const age = Math.floor((Date.now() - new Date(client.dob)) / (365.25 * 24 * 60 * 60 * 1000)); parts.push(`Age ${age}.`); }
+  if (client.plan) parts.push(`Currently on ${client.plan}.`);
+  if (client.soaCompleted) parts.push('SOA completed.'); else parts.push('SOA not yet completed — confirm before presenting plans.');
+  if (client.notes) parts.push(`Notes: ${client.notes}`);
+  if (client.state === 'OK') parts.push('Licensed in Oklahoma — no birthday rule for Medigap.');
+  if (client.state === 'TX') parts.push('Licensed in Texas — no birthday rule for Medigap.');
+  return parts.join(' ');
+}
+
+// ── Eligibility alerts ─────────────────────────────────────────
+function computeAlerts() {
+  const alerts = [];
+  const today = new Date();
+  for (const c of state.clients) {
+    if (c.dob) {
+      const dob = new Date(c.dob);
+      const partBDate = new Date(dob); partBDate.setFullYear(dob.getFullYear() + 65);
+      const days = Math.round((partBDate - today) / (1000 * 60 * 60 * 24));
+      if ([90,60,30].includes(days)) alerts.push({ priority: days <= 30 ? 'high' : 'normal', msg: `${c.name} turns 65 in ${days} days — Initial Enrollment Window approaching.`, type: 'T65' });
+    }
+    const aepStart = new Date(today.getFullYear(), 9, 15);
+    const daysToAEP = Math.round((aepStart - today) / (1000 * 60 * 60 * 24));
+    if (daysToAEP > 0 && daysToAEP <= 30 && c.plan) {
+      alerts.push({ priority: 'normal', msg: `AEP starts in ${daysToAEP} days — review ${c.name}'s plan.`, type: 'AEP' });
+    }
+  }
+  return alerts;
+}
+
+function checkEligibility() {
+  state.alerts = computeAlerts();
+  renderAlerts();
+}
+
+// ── Claude API call ────────────────────────────────────────────
+async function callClaude(model, maxTokens, system, user) {
+  if (!state.anthropicKey) throw new Error('No API key configured. Go to Settings.');
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': state.anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  return data.content?.[0]?.text || '';
+}
+
+// ── TTS via Deepgram ───────────────────────────────────────────
+async function speak(text) {
+  if (!state.deepgramKey || !text) return;
+  try {
+    const resp = await fetch('https://api.deepgram.com/v1/speak?model=aura-2-thalia-en', {
+      method: 'POST',
+      headers: { 'Authorization': `Token ${state.deepgramKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!resp.ok) return;
+    const buf = await resp.arrayBuffer();
+    const blob = new Blob([buf], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    await audio.play().catch(() => {});
+  } catch(e) {}
+}
+
+// ── Client management ──────────────────────────────────────────
+function findClient(name) {
+  if (!name) return null;
+  const n = name.toLowerCase();
+  return state.clients.find(c => c.name.toLowerCase().includes(n) || (c.email || '').toLowerCase().includes(n)) || null;
+}
+
+function saveClients() { save('clients', state.clients); renderClients(''); checkEligibility(); }
+
+function openAddClient() { document.getElementById('add-client-modal').style.display = 'flex'; }
+function closeAddClient() { document.getElementById('add-client-modal').style.display = 'none'; }
+
+function saveClient() {
+  const name = document.getElementById('mc-name').value.trim();
+  if (!name) { alert('Name is required'); return; }
+  const client = {
+    id: Date.now().toString(),
+    name,
+    email: document.getElementById('mc-email').value.trim(),
+    phone: document.getElementById('mc-phone').value.trim(),
+    plan: document.getElementById('mc-plan').value.trim(),
+    notes: document.getElementById('mc-notes').value.trim(),
+    state: document.getElementById('mc-state').value,
+    soaCompleted: false,
+    soaSentAt: null,
+    tasks: [],
+    addedAt: new Date().toISOString(),
+  };
+  state.clients.push(client);
+  saveClients();
+  closeAddClient();
+  showNotif(`${name} added`, 'success');
+  ['mc-name','mc-email','mc-phone','mc-plan','mc-notes'].forEach(id => document.getElementById(id).value = '');
+}
+
+function markSOASent(client) {
+  client.soaSentAt = new Date().toISOString();
+  saveClients();
+}
+
+function toggleSOA(id) {
+  const c = state.clients.find(x => x.id === id);
+  if (c) { c.soaCompleted = !c.soaCompleted; saveClients(); showNotif(`SOA ${c.soaCompleted ? 'marked complete' : 'marked pending'} for ${c.name}`, 'success'); }
+}
+
+function deleteClient(id) {
+  if (!confirm('Remove this client from local storage?')) return;
+  state.clients = state.clients.filter(c => c.id !== id);
+  saveClients();
+}
+
+// ── Appointment management ─────────────────────────────────────
+function renderAppointments() {
+  const list = document.getElementById('appt-list');
+  const now = new Date();
+  const upcoming = state.appointments.filter(a => new Date(a.date) >= now).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  if (upcoming.length === 0) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px 0">No upcoming appointments.<br>Appointments from your Manus booking site will appear here when the backend is connected.</div>';
+    return;
+  }
+
+  list.innerHTML = upcoming.map(a => {
+    const dt = new Date(a.date);
+    const isNew = !state.clients.find(c => c.name.toLowerCase() === a.clientName?.toLowerCase());
+    return `<div class="appt-card ${isNew ? 'new-client' : ''}">
+      <div class="appt-time">${dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})}</div>
+      <div class="appt-name">${isNew ? '<span class="new-badge">NEW</span>' : ''}${escHtml(a.clientName || 'Unknown')}</div>
+      <div class="soa-status ${a.soaCompleted ? 'soa-done' : 'soa-pending'}">
+        ${a.soaCompleted ? '✓ SOA complete' : '⚠ SOA pending'}
+      </div>
+      ${a.tags?.length ? `<div class="appt-tags">${a.tags.map(t=>`<span class="appt-tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
+      <button class="brief-btn" onclick="processCommand('Brief me on ${escHtml(a.clientName || '')}')">Brief me →</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Render clients ─────────────────────────────────────────────
+function renderClients(query) {
+  const list = document.getElementById('client-list');
+  const filtered = query ? state.clients.filter(c => c.name.toLowerCase().includes(query.toLowerCase()) || (c.email||'').toLowerCase().includes(query.toLowerCase())) : state.clients;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0">${state.clients.length === 0 ? 'No clients yet. Add one with the + Add button.' : 'No matching clients.'}</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(c => `
+    <div class="client-card">
+      <div class="client-name-row">
+        <span>${escHtml(c.name)}</span>
+        <span style="font-size:10px;font-family:var(--mono);color:${c.state==='OK'?'#60a5fa':'#34d399'}">${c.state||''}</span>
+      </div>
+      ${c.plan ? `<div class="client-plan">${escHtml(c.plan)}</div>` : ''}
+      ${c.email ? `<div class="client-email">${escHtml(c.email)}</div>` : ''}
+      <div style="font-size:10px;color:var(--text-muted);font-family:var(--mono)">
+        SOA: ${c.soaCompleted ? '<span style="color:var(--accent)">Complete</span>' : c.soaSentAt ? '<span style="color:var(--warn)">Sent, awaiting</span>' : '<span style="color:var(--text-muted)">Not sent</span>'}
+        ${c.tasks?.length ? ` · ${c.tasks.length} task${c.tasks.length>1?'s':''}` : ''}
+      </div>
+      <div class="client-actions">
+        <button class="client-btn" onclick="processCommand('Brief me on ${escHtml(c.name)}')">Brief</button>
+        <button class="client-btn" onclick="processCommand('Start meeting with ${escHtml(c.name)}')">Meeting</button>
+        <button class="client-btn" onclick="toggleSOA('${c.id}')">${c.soaCompleted ? 'Undo SOA' : 'Mark SOA ✓'}</button>
+        <button class="client-btn" onclick="deleteClient('${c.id}')" style="color:var(--danger)">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Render alerts ──────────────────────────────────────────────
+function renderAlerts() {
+  const list = document.getElementById('alert-list');
+  if (state.alerts.length === 0) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px 0">No active eligibility alerts.<br>Add clients with dates of birth to see T65 and AEP alerts.</div>';
+    return;
+  }
+  list.innerHTML = state.alerts.map(a => `
+    <div class="alert-card alert-${a.priority}">
+      <div class="alert-type">${escHtml(a.type)}</div>
+      <div class="alert-msg">${escHtml(a.msg)}</div>
+    </div>
+  `).join('');
+}
+
+// ── Pending approval ───────────────────────────────────────────
+function setPending(text, fn) {
+  state.pendingAction = fn;
+  document.getElementById('pending-text').textContent = text;
+  document.getElementById('pending-box').style.display = 'flex';
+  document.getElementById('response-box').style.display = 'none';
+}
+
+function approvePending() {
+  if (state.pendingAction) { state.pendingAction(); state.pendingAction = null; }
+  hidePending();
+}
+
+function cancelPending() {
+  state.pendingAction = null;
+  hidePending();
+  showResponse('Cancelled.');
+}
+
+function hidePending() { document.getElementById('pending-box').style.display = 'none'; }
+
+// ── UI helpers ─────────────────────────────────────────────────
+function setOrbState(s) {
+  const orb = document.getElementById('orb');
+  const icon = document.getElementById('orb-icon');
+  const hint = document.getElementById('orb-hint');
+  const wrap = document.getElementById('orb-wrap');
+  orb.className = 'orb' + (s === 'listening' ? ' listening pulse' : s === 'processing' ? ' processing' : '');
+
+  // Remove rings
+  wrap.querySelectorAll('.orb-ring,.orb-ring2').forEach(r => r.remove());
+
+  if (s === 'listening') {
+    const r1 = document.createElement('div'); r1.className = 'orb-ring'; wrap.appendChild(r1);
+    const r2 = document.createElement('div'); r2.className = 'orb-ring2'; wrap.appendChild(r2);
+    icon.setAttribute('stroke', 'var(--danger)');
+    hint.textContent = 'Listening… release to process';
+  } else if (s === 'processing') {
+    icon.setAttribute('stroke', 'var(--accent)');
+    icon.style.animation = 'spin 1s linear infinite';
+    hint.textContent = 'Processing…';
+  } else {
+    icon.setAttribute('stroke', 'var(--text-sub)');
+    icon.style.animation = '';
+    hint.textContent = state.mode === 'meeting' ? 'Push-to-talk · SPACE · Meeting active' : 'Hold to speak · SPACE shortcut';
+  }
+}
+
+function setMode(m) {
+  state.mode = m;
+  const pill = document.getElementById('mode-pill');
+  pill.className = 'mode-pill mode-' + m;
+  pill.textContent = m === 'solo' ? '● Solo' : m === 'meeting' ? '● In Meeting' : '● Review';
+  setOrbState('idle');
+}
+
+function showTranscript(t) {
+  document.getElementById('transcript-text').textContent = `"${t}"`;
+  document.getElementById('transcript-box').style.display = 'flex';
+}
+
+function showResponse(text) {
+  const box = document.getElementById('response-box');
+  box.innerHTML = escHtml(text).replace(/\n/g, '<br>');
+  box.style.display = 'block';
+  hidePending();
+}
+
+function hideResponse() {
+  document.getElementById('response-box').style.display = 'none';
+  document.getElementById('transcript-box').style.display = 'none';
+}
+
+function showNotif(msg, type = 'success') {
+  const bar = document.getElementById('notif-bar');
+  bar.style.display = 'flex';
+  const chip = document.createElement('div');
+  chip.className = `notif-chip notif-${type}`;
+  chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">${type === 'success' ? '<polyline points="20 6 9 17 4 12"/>' : type === 'error' ? '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>' : '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'}  </svg>${escHtml(msg)}`;
+  bar.prepend(chip);
+  setTimeout(() => { chip.remove(); if (!bar.children.length) bar.style.display = 'none'; }, 5000);
+}
+
+function dispColor(d) {
+  return d === 'enrolled' ? 'var(--accent)' : d === 'declined' ? 'var(--danger)' : d === 'follow_up' ? 'var(--warn)' : 'var(--text-sub)';
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// ── Backend connection (Railway) ───────────────────────────────
+function connectBackend() {
+  // Check backend health
+  fetch(`${BACKEND}/health`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        showNotif('Backend connected ✓', 'success');
+        fetchBackendAppointments();
+      }
+    })
+    .catch(() => {
+      console.warn('[Backend] Not reachable — running in local mode');
+    });
+
+  // Connect Socket.IO for real-time updates
+  try {
+    if (typeof io !== 'undefined') {
+      const socket = io(BACKEND, { transports: ['websocket', 'polling'] });
+
+      socket.on('connect', () => {
+        console.log('[Socket] Connected to backend');
+      });
+
+      socket.on('new_booking', (data) => {
+        showNotif(`New booking: ${data.name} — ${new Date(data.appointment_date).toLocaleDateString()}`, 'success');
+        fetchBackendAppointments();
+      });
+
+      socket.on('soa_completed', (data) => {
+        showNotif(`SOA completed by client`, 'success');
+        fetchBackendAppointments();
+      });
+
+      socket.on('morning_briefing', (data) => {
+        if (data.script) {
+          showResponse(data.script);
+          if (data.audio) {
+            const binary = atob(data.audio);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.onended = () => URL.revokeObjectURL(url);
+            audio.play().catch(() => {});
+          }
+        }
+      });
+
+      socket.on('crm_synced', (data) => {
+        showNotif(`Notes saved to SparkAdvisor for ${data.client_name || 'client'}`, 'success');
+      });
+
+      socket.on('enrollment_confirmed', (data) => {
+        showNotif('Enrollment confirmed — tasks created in SparkAdvisor', 'success');
+      });
+
+      socket.on('disconnect', () => {
+        console.log('[Socket] Disconnected from backend');
+      });
+    }
+  } catch(e) {
+    console.warn('[Socket] Could not connect:', e.message);
+  }
+}
+
+// Fetch appointments from Railway backend
+async function fetchBackendAppointments() {
+  try {
+    const r = await fetch(`${BACKEND}/api/appointments?days=7`);
+    const data = await r.json();
+    if (data && data.length > 0) {
+      // Merge backend appointments with local ones
+      const backendAppts = data.map(a => ({
+        clientName: a.client_name,
+        date: a.appointment_dt,
+        time: new Date(a.appointment_dt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }),
+        soaCompleted: a.soa_completed,
+        tags: a.parsed_tags?.tags || [],
+        source: 'backend',
+      }));
+      // Add to state without duplicating
+      const existing = new Set(state.appointments.map(a => a.clientName + a.date));
+      const newAppts = backendAppts.filter(a => !existing.has(a.clientName + a.date));
+      state.appointments = [...state.appointments, ...newAppts];
+      save('appointments', state.appointments);
+      renderAppointments();
+    }
+  } catch(e) {
+    console.warn('[Backend] Appointments fetch failed:', e.message);
+  }
+}
+
+// Override triggerBriefing to use backend when available
+const _localBriefing = triggerBriefing;
+async function triggerBriefing() {
+  try {
+    const r = await fetch(`${BACKEND}/health`);
+    const health = await r.json();
+    if (health.status === 'ok') {
+      // Trigger backend briefing (plays via Socket.IO)
+      await fetch(`${BACKEND}/api/briefing/trigger`, { method: 'POST' });
+      showNotif('Morning briefing building…', 'success');
+      return;
+    }
+  } catch(e) {}
+  // Fallback to local briefing
+  await _localBriefing();
+}
+</script>
+</body>
+</html>
